@@ -1,5 +1,4 @@
-﻿using InputSimulator;
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
 
 namespace InputSimulator.Native

@@ -1,6 +1,5 @@
 ﻿namespace InputSimulator
 {
-#   pragma warning disable CA1069 // Enums values should not be duplicated
     /// <summary>
     /// Windows Virtual Key Codes.<br/>
     /// This includes every labelled virtual key used by windows.<br/>
@@ -361,5 +360,4 @@
         /// <summary>Z key</summary>
         Z = 0x5A,
     }
-#   pragma warning restore CA1069 // Enums values should not be duplicated
 }

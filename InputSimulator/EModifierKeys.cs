@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using InputSimulator.Internal;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
-using InputSimulator.Internal;
 
 namespace InputSimulator
 {

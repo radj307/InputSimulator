@@ -1,7 +1,6 @@
 ﻿using InputSimulator.Native;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 
 namespace InputSimulator
@@ -11,7 +10,7 @@ namespace InputSimulator
     /// </summary>
     public static class InputHelper
     {
-        #region Math
+        #region Normalize
         /// <summary>
         /// Normalizes the specified <paramref name="value"/> from the specified <paramref name="oldRange"/> to the specified <paramref name="newRange"/>.
         /// </summary>
@@ -27,7 +26,7 @@ namespace InputSimulator
         /// <inheritdoc cref="Normalize(double, (double Min, double Max), (double Min, double Max))"/>
         public static int NormalizeInt(double value, (double Min, double Max) oldRange, (double Min, double Max) newRange)
             => (int)Math.Truncate(Normalize(value, oldRange, newRange));
-        #endregion Math
+        #endregion Normalize
 
         #region Keyboard
 
@@ -247,7 +246,6 @@ namespace InputSimulator
         /// <inheritdoc cref="FromAbsCoordinates(POINT, RECT)"/>
         public static POINT FromAbsCoordinates(POINT absPoint) => FromAbsCoordinates(absPoint, NativeMethods.GetVirtualScreenRect());
         #endregion FromAbsCoordinates
-
 
         #endregion Mouse
     }
