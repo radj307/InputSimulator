@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <StartupObject>Example.WPF.Program</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\InputSimulator.Interop\InputSimulator.Interop.csproj" />
+    <ProjectReference Include="..\..\InputSimulator\InputSimulator.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,54 @@
+name: 'Update Version'
+
+on:
+  push:
+    tags: [ '[0-9]+.[0-9]+.[0-9]+-?**' ]
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell:  |
+            pwsh -noninteractive -command "try {{ $ErrorActionPreference='Stop'; . '{0}' }} catch {{ Write-Error ""FAILED: $_""; throw; }} if ((Test-Path -LiteralPath variable:\LASTEXITCODE)) {{ exit $LASTEXITCODE }}"
+
+jobs:
+  # This job is required because C# is assholes and dotnet publish refuses to use the version number set by the SetVersion.ps1 script.
+  update-version-number:
+    runs-on:  windows-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref:          'main'
+          fetch-depth:  0
+
+      - name: Update Version Number
+        id:   setversion
+        run:  |
+          # Get latest git tag & format it
+          $tag = $(git describe --tags --abbrev=0)
+          $tag -cmatch '(?<MAJOR>\d+?)\.(?<MINOR>\d+?)\.(?<PATCH>\d+?)(?<EXTRA>.*)' > $null
+          $tag_3_part = $Matches.MAJOR + '.' + $Matches.MINOR + '.' + $Matches.PATCH
+          $copyright = "Copyright © $((Get-Date).Year) by `$`(Authors`)"
+          
+          .\.github\workflows\scripts\SetProperty.ps1  -Path Directory.Build.props  Version=$tag  FileVersion=$tag_3_part  Copyright=$copyright
+
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Push Changes
+        run:  |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add -A
+          git commit -m "Update .csproj Version Numbers"
+          git push origin
+
+      - name: Dispatch update-package
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          event-type: update-package
+          client-payload: |-
+            {
+              "tag": "${{ steps.setversion.outputs.tag }}"
+            }
+        
+# HEAD:github-actions

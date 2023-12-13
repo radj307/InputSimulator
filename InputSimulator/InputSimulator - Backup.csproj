@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>Latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <PackageId>radj307.InputSimulator</PackageId>
+    <Authors>radj307</Authors>
+    <Description>An improved C# library for simulating mouse and keyboard input. </Description>
+    <PackageProjectUrl>https://github.com/radj307/InputSimulator</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/radj307/InputSimulator</RepositoryUrl>
+    <PackageTags>inputsimulator;input;sim;simulator;synth;synthesize;fake;mouse;keyboard;hardware</PackageTags>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+    
+</Project>
