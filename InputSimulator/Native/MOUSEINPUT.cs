@@ -11,7 +11,7 @@ namespace InputSimulator.Native
     /// The full documentation is available on MSDN: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-mouseinput"/>
     /// </remarks>
     [StructLayout(LayoutKind.Sequential)]
-    [DebuggerDisplay("({dx}, {dy}), {dwFlags:G}, Data: {mouseData}")]
+    [DebuggerDisplay("({dx}, {dy}), {dwFlags}, Data: {mouseData}")]
     public struct MOUSEINPUT
     {
         #region Fields

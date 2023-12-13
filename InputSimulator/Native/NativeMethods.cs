@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
+using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace InputSimulator.Native
 {
@@ -11,6 +12,52 @@ namespace InputSimulator.Native
     /// </summary>
     public static class NativeMethods
     {
+        #region FormatMessage (P/Invoke)
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        private static extern int FormatMessage(FORMAT_MESSAGE dwFlags, IntPtr lpSource, int dwMessageId, uint dwLanguageId, out StringBuilder msgOut, int nSize, IntPtr Arguments);
+        [Flags]
+        private enum FORMAT_MESSAGE : uint
+        {
+            /// <summary/>
+            ALLOCATE_BUFFER = 0x00000100,
+            /// <summary/>
+            IGNORE_INSERTS = 0x00000200,
+            /// <summary/>
+            FROM_SYSTEM = 0x00001000,
+            /// <summary/>
+            ARGUMENT_ARRAY = 0x00002000,
+            /// <summary/>
+            FROM_HMODULE = 0x00000800,
+            /// <summary/>
+            FROM_STRING = 0x00000400
+        }
+        #endregion FormatMessage (P/Invoke)
+
+        #region GetLastError
+        /// <summary>
+        /// Gets the last error to have occurred in the Win32 API.
+        /// </summary>
+        /// <returns>A <see cref="Win32Exception"/> object representing the last error if there is one; otherwise, <see langword="null"/>.</returns>
+        public static Win32Exception GetLastWin32Error()
+        {
+            var hr = Marshal.GetLastWin32Error();
+
+            if (hr == 0) return null!;
+
+            _ = FormatMessage(
+                FORMAT_MESSAGE.ALLOCATE_BUFFER | FORMAT_MESSAGE.FROM_SYSTEM | FORMAT_MESSAGE.IGNORE_INSERTS,
+                IntPtr.Zero,
+                hr,
+                0,
+                out StringBuilder msg,
+                256,
+                IntPtr.Zero
+            );
+
+            return new(hr, msg.ToString());
+        }
+        #endregion GetLastError
+
         #region SendInput (P/Invoke)
         /// <remarks>
         /// <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput"/>
@@ -32,19 +79,45 @@ namespace InputSimulator.Native
         /// </remarks>
         /// <param name="inputs">Any number of <see cref="INPUT"/> structures representing individual events to be inserted into the keyboard or mouse input streams.</param>
         /// <returns>The number of successful events.</returns>
-        public static uint SendInput(params INPUT[] inputs)
+        public static uint SendInputs(params INPUT[] inputs)
             => SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
-        /// <inheritdoc cref="SendInput(INPUT[])"/>
-        public static uint SendInput(IEnumerable<INPUT> inputs)
-            => SendInput(inputs.ToArray());
+        /// <inheritdoc cref="SendInputs(INPUT[])"/>
+        public static uint SendInputs(IEnumerable<INPUT> inputs)
+            => SendInputs(inputs.ToArray());
         /// <param name="input">An <see cref="INPUT"/> structure representing the event to be inserted into the keyboard or mouse input stream.</param>
-        /// <inheritdoc cref="SendInput(INPUT[])"/>
+        /// <inheritdoc cref="SendInputs(INPUT[])"/>
         public static bool SendInput(INPUT input)
             => 1u == SendInput(1u, new[] { input }, Marshal.SizeOf(typeof(INPUT)));
+        /// <remarks>
+        /// The only difference between this method and <see cref="SendInputs(INPUT[])"/> is that this method returns a <see cref="bool"/>.
+        /// <br/><br/>
+        /// See the full documentation on MSDN: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput"/>.
+        /// <br/><br/>
+        /// <b>Warning:</b> This function fails when it is blocked by UIPI.
+        /// Note that neither GetLastError nor the return value will indicate the failure was caused by UIPI blocking.<br/>
+        /// See here for more information on UIPI: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-changewindowmessagefilter#remarks"/>.
+        /// </remarks>
+        /// <returns><see langword="true"/> when all of the specified <paramref name="inputs"/> were sent successfully; otherwise, <see langword="false"/> when at least one input failed.</returns>
+        /// <inheritdoc cref="SendInputs(INPUT[])"/>
+        public static bool SendInput(params INPUT[] inputs)
+            => inputs.Length == SendInputs(inputs);
+        /// <remarks>
+        /// The only difference between this method and <see cref="SendInputs(IEnumerable{INPUT})"/> is that this method returns a <see cref="bool"/>.
+        /// <br/><br/>
+        /// See the full documentation on MSDN: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput"/>.
+        /// <br/><br/>
+        /// <b>Warning:</b> This function fails when it is blocked by UIPI.
+        /// Note that neither GetLastError nor the return value will indicate the failure was caused by UIPI blocking.<br/>
+        /// See here for more information on UIPI: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-changewindowmessagefilter#remarks"/>.
+        /// </remarks>
+        /// <returns><see langword="true"/> when all of the specified <paramref name="inputs"/> were sent successfully; otherwise, <see langword="false"/> when at least one input failed.</returns>
+        /// <inheritdoc cref="SendInputs(INPUT[])"/>
+        public static bool SendInput(IEnumerable<INPUT> inputs)
+            => SendInput(inputs.ToArray());
         #endregion SendInput
 
         #region GetMonitorInfo (P/Invoke)
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", CharSet = CharSet.Ansi)] //< use GetMonitorInfoA because the unicode variant doesn't always fill out the struct correctly on Win2K according to System.Windows.Forms.Screen source code
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
         #endregion GetMonitorInfo (P/Invoke)
@@ -101,19 +174,57 @@ namespace InputSimulator.Native
             => GetNearestMonitorFromPoint(new(x, y));
         #endregion GetNearestMonitorFromPoint
 
+        #region EnumDisplayMonitors (P/Invoke)
+        /// <remarks>
+        /// MSDN Documentation: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumdisplaymonitors"/>
+        /// </remarks>
+        [DllImport("user32.dll")]
+        private static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MONITORENUMPROC lpfnEnum, IntPtr dwData);
+        /// <remarks>
+        /// MSDN Documentation: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nc-winuser-monitorenumproc"/>
+        /// </remarks>
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private delegate bool MONITORENUMPROC(IntPtr hMonitor, IntPtr hdcMonitor, IntPtr lprcMonitor, IntPtr dwData);
+        #endregion EnumDisplayMonitors (P/Invoke)
+
+        #region GetAllMonitors
+        /// <summary>
+        /// Gets the handles for all monitors.
+        /// </summary>
+        /// <remarks>
+        /// Do not attempt to dispose of the returned handles, or a memory access violation will be thrown!
+        /// </remarks>
+        /// <returns>Monitor handles as an <see cref="IntPtr"/> array.</returns>
+        public static IntPtr[] GetAllMonitorHandles()
+        {
+            List<IntPtr> handles = new();
+
+            EnumDisplayMonitors(
+                hdc: IntPtr.Zero,
+                lprcClip: IntPtr.Zero,
+                lpfnEnum: (handle, _, _, _) =>
+                {
+                    handles.Add(handle);
+                    return true;
+                },
+                dwData: IntPtr.Zero);
+
+            return handles.ToArray();
+        }
+        #endregion GetAllMonitors
+
         #region GetSystemMetricsForDpi (P/Invoke)
         enum SystemMetric : int
         {
             /// <summary>
-            ///  The width of the screen of the primary display monitor, in pixels.
-            ///  This is the same value obtained by calling GetDeviceCaps as follows: GetDeviceCaps(hdcPrimaryMonitor, HORZRES). 
+            /// The number of display monitors on a desktop.
             /// </summary>
-            SM_CXSCREEN = 0,
-            /// <summary>
-            ///  The height of the screen of the primary display monitor, in pixels.
-            ///  This is the same value obtained by calling GetDeviceCaps as follows: GetDeviceCaps(hdcPrimaryMonitor, VERTRES). 
-            /// </summary>
-            SM_CYSCREEN = 1,
+            /// <remarks>
+            /// GetSystemMetrics(SM_CMONITORS) counts only visible display monitors.
+            /// This is different from EnumDisplayMonitors, which enumerates both visible display monitors and invisible pseudo-monitors that are associated with mirroring drivers.
+            /// An invisible pseudo-monitor is associated with a pseudo-device used to mirror application drawing for remoting or other purposes.
+            /// </remarks>
+            SM_CMONITORS = 80,
             /// <summary>
             ///  The coordinates for the left side of the virtual screen.
             ///  The virtual screen is the bounding rectangle of all display monitors.
@@ -202,7 +313,7 @@ namespace InputSimulator.Native
         /// </summary>
         /// <param name="dpi">The system DPI.</param>
         /// <returns>The origin point, width, and height of the virtual screen.</returns>
-        public static Rectangle GetVirtualScreenSize(uint dpi)
+        public static System.Drawing.Rectangle GetVirtualScreenSize(uint dpi)
         {
             return new(
                 x: GetVirtualScreenX(dpi),
@@ -211,7 +322,7 @@ namespace InputSimulator.Native
                 height: GetVirtualScreenHeight(dpi));
         }
         /// <inheritdoc cref="GetVirtualScreenSize(uint)"/>
-        public static Rectangle GetVirtualScreenSize() => GetVirtualScreenSize(GetSystemDpi());
+        public static System.Drawing.Rectangle GetVirtualScreenSize() => GetVirtualScreenSize(GetSystemDpi());
         #endregion GetVirtualScreenSize
 
         #region GetVirtualScreenRect
@@ -225,13 +336,86 @@ namespace InputSimulator.Native
             var x = GetVirtualScreenX(dpi);
             var y = GetVirtualScreenY(dpi);
             return new RECT(
-                leftPos: x,
-                topPos: y,
-                rightPos: x + GetVirtualScreenWidth(dpi),
-                bottomPos: y + GetVirtualScreenHeight(dpi));
+                left: x,
+                top: y,
+                right: x + GetVirtualScreenWidth(dpi),
+                bottom: y + GetVirtualScreenHeight(dpi));
         }
         /// <inheritdoc cref="GetVirtualScreenRect(uint)"/>
         public static RECT GetVirtualScreenRect() => GetVirtualScreenRect(GetSystemDpi());
         #endregion GetVirtualScreenRect
+
+        #region IsIconic (P/Invoke)
+        [DllImport("User32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool IsIconic(IntPtr hWnd);
+        #endregion IsIconic (P/Invoke)
+
+        #region IsWindowMinimized
+        public static bool IsWindowMinimized(IntPtr hWnd) => IsIconic(hWnd);
+        #endregion IsWindowMinimized
+
+        #region GetWindowRect (P/Invoke)
+        /// <remarks>
+        /// <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowrect"/>
+        /// </remarks>
+        [DllImport("User32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+        #endregion GetWindowRect (P/Invoke)
+
+        #region GetWindowRect
+        /// <summary>
+        /// Gets the dimensions of the window with the specified <paramref name="hWnd"/>.
+        /// </summary>
+        /// <remarks>
+        /// This function fails when the window is minimized.
+        /// </remarks>
+        /// <param name="hWnd">The handle of the target window.</param>
+        /// <returns>The window's dimensions as a <see cref="RECT"/> structure when successful; otherwise, a default (zeroed) <see cref="RECT"/> structure.</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static RECT GetWindowRect(IntPtr hWnd)
+        {
+            if (hWnd == IntPtr.Zero)
+                throw new ArgumentNullException(nameof(hWnd));
+
+            if (IsWindowMinimized(hWnd)) return default;
+
+            GetWindowRect(hWnd, out var rect);
+            return rect;
+        }
+        #endregion GetWindowRect
+
+        #region GetClientRect (P/Invoke)
+        [DllImport("User32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+        #endregion GetClientRect (P/Invoke)
+
+        #region GetWindowClientRect
+        public static RECT GetWindowClientRect(IntPtr hWnd)
+        {
+            if (hWnd == IntPtr.Zero)
+                throw new ArgumentNullException(nameof(hWnd));
+            GetClientRect(hWnd, out var rect);
+            return rect;
+        }
+        #endregion GetWindowClientRect
+
+        #region GetCursorPos (P/Invoke)
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetCursorPos(out POINT lpPoint);
+        #endregion GetCursorPos (P/Invoke)
+
+        #region GetCursorPos
+        public static POINT GetCursorPos()
+        {
+            GetCursorPos(out POINT lpPoint);
+            return lpPoint;
+        }
+        public static POINT GetCursorPosAbs()
+            => InputHelper.ToAbsCoordinates(GetCursorPos());
+        #endregion GetCursorPos
     }
 }

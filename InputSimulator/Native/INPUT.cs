@@ -10,7 +10,7 @@ namespace InputSimulator.Native
     /// The full documentation is available on MSDN: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-input"/>
     /// </remarks>
     [StructLayout(LayoutKind.Sequential)]
-    [DebuggerDisplay("{type:G}")]
+    [DebuggerDisplay("{type}")]
     public struct INPUT
     {
         #region Constructors

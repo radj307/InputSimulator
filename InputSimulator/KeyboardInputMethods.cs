@@ -39,7 +39,7 @@ namespace InputSimulator
                     wVk = key
                 }));
             }
-            return NativeMethods.SendInput(inputs);
+            return NativeMethods.SendInputs(inputs);
         }
         /// <inheritdoc cref="KeyDown(IEnumerable{EVirtualKeyCode})"/>
         public static uint KeyDown(params EVirtualKeyCode[] keys)
@@ -53,7 +53,7 @@ namespace InputSimulator
                     wVk = keys[i]
                 });
             }
-            return NativeMethods.SendInput(inputs);
+            return NativeMethods.SendInputs(inputs);
         }
         #endregion KeyDown
 
@@ -88,7 +88,7 @@ namespace InputSimulator
                     dwFlags = KEYBDINPUT.Flags.KEYEVENTF_KEYUP
                 }));
             }
-            return NativeMethods.SendInput(inputs);
+            return NativeMethods.SendInputs(inputs);
         }
         /// <inheritdoc cref="KeyUp(IEnumerable{EVirtualKeyCode})"/>
         public static uint KeyUp(params EVirtualKeyCode[] keys)
@@ -102,7 +102,7 @@ namespace InputSimulator
                     wVk = keys[i]
                 });
             }
-            return NativeMethods.SendInput(inputs);
+            return NativeMethods.SendInputs(inputs);
         }
         #endregion KeyUp
 
@@ -113,7 +113,7 @@ namespace InputSimulator
         /// <param name="key">The <see cref="EVirtualKeyCode"/> value associated with the key to simulate pressing.</param>
         /// <returns><see langword="true"/> when successful; otherwise, <see langword="false"/> when either the key down or key up event failed.</returns>
         public static bool KeyPress(EVirtualKeyCode key)
-            => 2u == NativeMethods.SendInput(
+            => 2u == NativeMethods.SendInputs(
                 new(new KEYBDINPUT()
                 { // key down
                     wVk = key
@@ -146,7 +146,7 @@ namespace InputSimulator
                     dwFlags = KEYBDINPUT.Flags.KEYEVENTF_KEYUP
                 }));
             }
-            return NativeMethods.SendInput(inputs);
+            return NativeMethods.SendInputs(inputs);
         }
         /// <inheritdoc cref="KeyPress(IEnumerable{EVirtualKeyCode})"/>
         public static uint KeyPress(params EVirtualKeyCode[] keys)
@@ -167,7 +167,7 @@ namespace InputSimulator
                     dwFlags = KEYBDINPUT.Flags.KEYEVENTF_KEYUP
                 });
             }
-            return NativeMethods.SendInput(inputs);
+            return NativeMethods.SendInputs(inputs);
         }
         #endregion KeyPress
 
@@ -177,7 +177,7 @@ namespace InputSimulator
         /// </summary>
         /// <param name="keys">The keys in the key stroke.</param>
         public static void KeyStrokeDown(params EVirtualKeyCode[] keys)
-            => NativeMethods.SendInput(InputHelper.BuildKeyStrokeDown(Array.Empty<EVirtualKeyCode>(), keys));
+            => NativeMethods.SendInputs(InputHelper.BuildKeyStrokeDown(Array.Empty<EVirtualKeyCode>(), keys));
         /// <inheritdoc cref="KeyStrokeDown(EVirtualKeyCode[])"/>
         public static void KeyStrokeDown(IEnumerable<EVirtualKeyCode> keys)
             => KeyStrokeDown(keys.ToArray());
@@ -187,13 +187,13 @@ namespace InputSimulator
         /// <inheritdoc cref="KeyStrokeDown(IEnumerable{EVirtualKeyCode})"/>
         /// <param name="modifierKeys">The modifier keys in the key stroke.</param>
         public static void KeyStrokeDown(IEnumerable<EVirtualKeyCode> modifierKeys, IEnumerable<EVirtualKeyCode> keys)
-            => NativeMethods.SendInput(InputHelper.BuildKeyStrokeDown(modifierKeys.ToArray(), keys.ToArray()));
+            => NativeMethods.SendInputs(InputHelper.BuildKeyStrokeDown(modifierKeys.ToArray(), keys.ToArray()));
 
         // with modifier keys enum:
 
         /// <inheritdoc cref="KeyStrokeDown(IEnumerable{EVirtualKeyCode}, IEnumerable{EVirtualKeyCode})"/>
         public static void KeyStrokeDown(EModifierKeys modifierKeys, params EVirtualKeyCode[] keys)
-            => NativeMethods.SendInput(InputHelper.BuildKeyStrokeDown(modifierKeys.ToVirtualKeyCodes(), keys.ToArray()));
+            => NativeMethods.SendInputs(InputHelper.BuildKeyStrokeDown(modifierKeys.ToVirtualKeyCodes(), keys.ToArray()));
         /// <inheritdoc cref="KeyStrokeDown(IEnumerable{EVirtualKeyCode}, IEnumerable{EVirtualKeyCode})"/>
         public static void KeyStrokeDown(EModifierKeys modifierKeys, IEnumerable<EVirtualKeyCode> keys)
             => KeyStrokeDown(modifierKeys, keys.ToArray());
@@ -205,7 +205,7 @@ namespace InputSimulator
         /// </summary>
         /// <param name="keys">The keys in the key stroke.</param>
         public static void KeyStrokeUp(params EVirtualKeyCode[] keys)
-            => NativeMethods.SendInput(InputHelper.BuildKeyStrokeUp(Array.Empty<EVirtualKeyCode>(), keys));
+            => NativeMethods.SendInputs(InputHelper.BuildKeyStrokeUp(Array.Empty<EVirtualKeyCode>(), keys));
         /// <inheritdoc cref="KeyStrokeUp(EVirtualKeyCode[])"/>
         public static void KeyStrokeUp(IEnumerable<EVirtualKeyCode> keys)
             => KeyStrokeUp(keys.ToArray());
@@ -215,13 +215,13 @@ namespace InputSimulator
         /// <inheritdoc cref="KeyStrokeUp(IEnumerable{EVirtualKeyCode})"/>
         /// <param name="modifierKeys">The modifier keys in the key stroke.</param>
         public static void KeyStrokeUp(IEnumerable<EVirtualKeyCode> modifierKeys, IEnumerable<EVirtualKeyCode> keys)
-            => NativeMethods.SendInput(InputHelper.BuildKeyStrokeUp(modifierKeys.ToArray(), keys.ToArray()));
+            => NativeMethods.SendInputs(InputHelper.BuildKeyStrokeUp(modifierKeys.ToArray(), keys.ToArray()));
 
         // with modifier keys enum:
 
         /// <inheritdoc cref="KeyStrokeUp(IEnumerable{EVirtualKeyCode}, IEnumerable{EVirtualKeyCode})"/>
         public static void KeyStrokeUp(EModifierKeys modifierKeys, params EVirtualKeyCode[] keys)
-            => NativeMethods.SendInput(InputHelper.BuildKeyStrokeUp(modifierKeys.ToVirtualKeyCodes(), keys));
+            => NativeMethods.SendInputs(InputHelper.BuildKeyStrokeUp(modifierKeys.ToVirtualKeyCodes(), keys));
         /// <inheritdoc cref="KeyStrokeUp(IEnumerable{EVirtualKeyCode}, IEnumerable{EVirtualKeyCode})"/>
         public static void KeyStrokeUp(EModifierKeys modifierKeys, IEnumerable<EVirtualKeyCode> keys)
             => KeyStrokeUp(modifierKeys, keys.ToArray());
@@ -233,7 +233,7 @@ namespace InputSimulator
         /// </summary>
         /// <param name="keys">The keys in the key stroke.</param>
         public static void KeyStroke(params EVirtualKeyCode[] keys)
-            => NativeMethods.SendInput(InputHelper.BuildKeyStroke(Array.Empty<EVirtualKeyCode>(), keys));
+            => NativeMethods.SendInputs(InputHelper.BuildKeyStroke(Array.Empty<EVirtualKeyCode>(), keys));
         /// <inheritdoc cref="KeyStroke(EVirtualKeyCode[])"/>
         public static void KeyStroke(IEnumerable<EVirtualKeyCode> keys)
             => KeyStroke(keys.ToArray());
@@ -243,13 +243,13 @@ namespace InputSimulator
         /// <inheritdoc cref="KeyStroke(IEnumerable{EVirtualKeyCode})"/>
         /// <param name="modifierKeys">The modifier keys in the key stroke.</param>
         public static void KeyStroke(IEnumerable<EVirtualKeyCode> modifierKeys, IEnumerable<EVirtualKeyCode> keys)
-            => NativeMethods.SendInput(InputHelper.BuildKeyStroke(modifierKeys.ToArray(), keys.ToArray()));
+            => NativeMethods.SendInputs(InputHelper.BuildKeyStroke(modifierKeys.ToArray(), keys.ToArray()));
 
         // with modifier keys enum:
 
         /// <inheritdoc cref="KeyStroke(IEnumerable{EVirtualKeyCode}, IEnumerable{EVirtualKeyCode})"/>
         public static void KeyStroke(EModifierKeys modifierKeys, params EVirtualKeyCode[] keys)
-            => NativeMethods.SendInput(InputHelper.BuildKeyStroke(modifierKeys.ToVirtualKeyCodes(), keys.ToArray()));
+            => NativeMethods.SendInputs(InputHelper.BuildKeyStroke(modifierKeys.ToVirtualKeyCodes(), keys.ToArray()));
         /// <inheritdoc cref="KeyStroke(IEnumerable{EVirtualKeyCode}, IEnumerable{EVirtualKeyCode})"/>
         public static void KeyStroke(EModifierKeys modifierKeys, IEnumerable<EVirtualKeyCode> keys)
             => KeyStroke(modifierKeys, keys.ToArray());
@@ -261,13 +261,13 @@ namespace InputSimulator
         /// </summary>
         /// <param name="character">A <see cref="char"/> to simulate typing.</param>
         public static void WriteText(char character)
-            => NativeMethods.SendInput(InputHelper.CharToKeyINPUT(character));
+            => NativeMethods.SendInputs(InputHelper.CharToKeyINPUT(character));
         /// <summary>
         /// Synthesizes the keystroke(s) to type the specified <paramref name="text"/>.
         /// </summary>
         /// <param name="character">A <see cref="string"/> to simulate typing.</param>
         public static void WriteText(string text)
-            => NativeMethods.SendInput(InputHelper.StringToINPUT(text));
+            => NativeMethods.SendInputs(InputHelper.StringToINPUT(text));
         #endregion WriteText
     }
 }

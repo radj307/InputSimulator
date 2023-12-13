@@ -1,6 +1,9 @@
-﻿using InputSimulator.Native;
+﻿using InputSimulator.Internal;
+using InputSimulator.Native;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 
 namespace InputSimulator
@@ -27,6 +30,33 @@ namespace InputSimulator
         public static int NormalizeInt(double value, (double Min, double Max) oldRange, (double Min, double Max) newRange)
             => (int)Math.Truncate(Normalize(value, oldRange, newRange));
         #endregion Normalize
+
+        #region ExpandInputs
+        public static INPUT[] ExpandInputs(params SingleOrEnumerable<INPUT>[] inputs)
+            => inputs.SelectMany(item => item).ToArray();
+
+        #region (Class) SingleOrEnumerable<T>
+        public class SingleOrEnumerable<T> : IEnumerable<T>
+        {
+            public SingleOrEnumerable(params T[] items)
+            {
+                _items = items;
+            }
+
+            private readonly T[] _items;
+
+            public int Length => _items.Length;
+
+            public static implicit operator SingleOrEnumerable<T>(T item) => new(item);
+            public static implicit operator SingleOrEnumerable<T>(T[] items) => new(items);
+            public static implicit operator T[](SingleOrEnumerable<T> instance) => instance._items;
+
+            public IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)_items).GetEnumerator();
+            IEnumerator IEnumerable.GetEnumerator() => _items.GetEnumerator();
+        }
+        #endregion (Class) SingleOrEnumerable<T>
+
+        #endregion ExpandInputs
 
         #region Keyboard
 
@@ -168,24 +198,51 @@ namespace InputSimulator
         #endregion Constants
 
         #region ToAbsCoordinateX
+        /// <summary>
+        /// Converts the specified <paramref name="xPixels"/> value to absolute coordinates.
+        /// </summary>
+        /// <param name="xPixels">A horizontal position (in pixels) to convert.</param>
+        /// <param name="virtualScreenRect">The virtual screen rect, from <see cref="NativeMethods.GetVirtualScreenRect"/></param>
+        /// <returns>The equivalent absolute horizontal coordinate.</returns>
         public static int ToAbsCoordinateX(int xPixels, RECT virtualScreenRect)
         {
             return NormalizeInt(xPixels, (virtualScreenRect.left, virtualScreenRect.right), (ushort.MinValue, ushort.MaxValue));
         }
         /// <inheritdoc cref="ToAbsCoordinateX(int, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
         public static int ToAbsCoordinateX(int xPixels) => ToAbsCoordinateX(xPixels, NativeMethods.GetVirtualScreenRect());
         #endregion ToAbsCoordinateX
 
         #region ToAbsCoordinateY
+        /// <summary>
+        /// Converts the specified <paramref name="yPixels"/> value to absolute coordinates.
+        /// </summary>
+        /// <param name="yPixels">A vertical position (in pixels) to convert.</param>
+        /// <param name="virtualScreenRect">The virtual screen rect, from <see cref="NativeMethods.GetVirtualScreenRect"/></param>
+        /// <returns>The equivalent absolute vertical coordinate.</returns>
         public static int ToAbsCoordinateY(int yPixels, RECT virtualScreenRect)
         {
             return NormalizeInt(yPixels, (virtualScreenRect.top, virtualScreenRect.bottom), (ushort.MinValue, ushort.MaxValue));
         }
         /// <inheritdoc cref="ToAbsCoordinateY(int, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
         public static int ToAbsCoordinateY(int yPixels) => ToAbsCoordinateY(yPixels, NativeMethods.GetVirtualScreenRect());
         #endregion ToAbsCoordinateY
 
         #region ToAbsCoordinates
+        /// <summary>
+        /// Converts the specified <paramref name="xPixels"/> &amp; <paramref name="yPixels"/> values to absolute coordinates.
+        /// </summary>
+        /// <param name="xPixels">A horizontal position (in pixels) to convert.</param>
+        /// <param name="yPixels">A vertical position (in pixels) to convert.</param>
+        /// <param name="virtualScreenRect">The virtual screen rect, from <see cref="NativeMethods.GetVirtualScreenRect"/></param>
+        /// <returns><see cref="POINT"/> containing the equivalent absolute coordinates.</returns>
         public static POINT ToAbsCoordinates(int xPixels, int yPixels, RECT virtualScreenRect)
         {
             return new(
@@ -193,10 +250,20 @@ namespace InputSimulator
                 yPos: ToAbsCoordinateY(yPixels, virtualScreenRect));
         }
         /// <inheritdoc cref="ToAbsCoordinates(ushort, ushort, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
         public static POINT ToAbsCoordinates(int xPixels, int yPixels) => ToAbsCoordinates(xPixels, yPixels, NativeMethods.GetVirtualScreenRect());
 
         // with POINT:
 
+        /// <summary>
+        /// Converts the specified <paramref name="pxPoint"/> to absolute coordinates.
+        /// </summary>
+        /// <param name="pxPoint">A point (in pixels) to convert.</param>
+        /// <param name="virtualScreenRect">The virtual screen rect, from <see cref="NativeMethods.GetVirtualScreenRect"/></param>
+        /// <returns><see cref="POINT"/> containing the equivalent absolute coordinates.</returns>
         public static POINT ToAbsCoordinates(POINT pxPoint, RECT virtualScreenRect)
         {
             return new(
@@ -204,6 +271,10 @@ namespace InputSimulator
                 yPos: ToAbsCoordinateY(pxPoint.y, virtualScreenRect));
         }
         /// <inheritdoc cref="ToAbsCoordinates(POINT, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
         public static POINT ToAbsCoordinates(POINT pxPoint) => ToAbsCoordinates(pxPoint, NativeMethods.GetVirtualScreenRect());
         #endregion ToAbsCoordinates
 
@@ -213,6 +284,10 @@ namespace InputSimulator
             return NormalizeInt(xAbs, (ushort.MinValue, ushort.MaxValue), (virtualScreenRect.left, virtualScreenRect.right));
         }
         /// <inheritdoc cref="FromAbsCoordinateX(int, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
         public static int FromAbsCoordinateX(int xAbs) => FromAbsCoordinateX(xAbs, NativeMethods.GetVirtualScreenRect());
         #endregion FromAbsCoordinateX
 
@@ -222,6 +297,10 @@ namespace InputSimulator
             return NormalizeInt(yAbs, (ushort.MinValue, ushort.MaxValue), (virtualScreenRect.top, virtualScreenRect.bottom));
         }
         /// <inheritdoc cref="FromAbsCoordinateY(int, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
         public static int FromAbsCoordinateY(int yAbs) => FromAbsCoordinateY(yAbs, NativeMethods.GetVirtualScreenRect());
         #endregion FromAbsCoordinateY
 
@@ -233,6 +312,10 @@ namespace InputSimulator
                 yPos: FromAbsCoordinateY(yAbs, virtualScreenRect));
         }
         /// <inheritdoc cref="FromAbsCoordinates(ushort, ushort, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
         public static POINT FromAbsCoordinates(ushort xAbs, ushort yAbs) => FromAbsCoordinates(xAbs, yAbs, NativeMethods.GetVirtualScreenRect());
 
         // with POINT:
@@ -244,8 +327,127 @@ namespace InputSimulator
                 yPos: FromAbsCoordinateY(absPoint.y, virtualScreenRect));
         }
         /// <inheritdoc cref="FromAbsCoordinates(POINT, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
         public static POINT FromAbsCoordinates(POINT absPoint) => FromAbsCoordinates(absPoint, NativeMethods.GetVirtualScreenRect());
         #endregion FromAbsCoordinates
+
+        #region MouseButtonToFlags
+        /// <summary>
+        /// Converts the specified <paramref name="mouseButton"/> value to the associated <see cref="MOUSEINPUT.Flags"/> value.
+        /// </summary>
+        /// <param name="mouseButton">The mouse button to get the flag of.</param>
+        /// <param name="buttonDown">When <see langword="true"/>, returns the button down flag.<br/>When <see langword="false"/>, returns the button up flag.</param>
+        /// <returns><see cref="MOUSEINPUT.Flags"/> value for the specified <paramref name="mouseButton"/>. Whether it is the button down/up flag depends on <paramref name="buttonDown"/>.</returns>
+        /// <exception cref="InvalidEnumArgumentException"></exception>
+        public static MOUSEINPUT.Flags MouseButtonToFlags(EMouseButton mouseButton, bool buttonDown)
+        {
+#pragma warning disable IDE0066 // Convert switch statement to expression
+            switch (mouseButton)
+#pragma warning restore IDE0066 // Convert switch statement to expression
+            {
+            case EMouseButton.Left:
+                return buttonDown
+                    ? MOUSEINPUT.Flags.MOUSEEVENTF_LEFTDOWN
+                    : MOUSEINPUT.Flags.MOUSEEVENTF_LEFTUP;
+            case EMouseButton.Right:
+                return buttonDown
+                    ? MOUSEINPUT.Flags.MOUSEEVENTF_RIGHTDOWN
+                    : MOUSEINPUT.Flags.MOUSEEVENTF_RIGHTUP;
+            case EMouseButton.Middle:
+                return buttonDown
+                    ? MOUSEINPUT.Flags.MOUSEEVENTF_MIDDLEDOWN
+                    : MOUSEINPUT.Flags.MOUSEEVENTF_MIDDLEUP;
+            case EMouseButton.X1:
+            case EMouseButton.X2:
+                return buttonDown
+                    ? MOUSEINPUT.Flags.MOUSEEVENTF_XDOWN
+                    : MOUSEINPUT.Flags.MOUSEEVENTF_XUP;
+            default:
+                throw new InvalidEnumArgumentException(nameof(EMouseButton), (int)mouseButton, typeof(EMouseButton));
+            }
+        }
+        #endregion MouseButtonToFlags
+
+        #region BuildMouseButton...
+        public static INPUT BuildMouseButton(EMouseButton mouseButton, bool buttonDown)
+        {
+            var buttonInput = new MOUSEINPUT()
+            {
+                dwFlags = MouseButtonToFlags(mouseButton, buttonDown)
+            };
+            switch (mouseButton)
+            { // special handling for XButtons
+            case EMouseButton.X1:
+                buttonInput.mouseData = MOUSEINPUT.XBUTTON1;
+                break;
+            case EMouseButton.X2:
+                buttonInput.mouseData = MOUSEINPUT.XBUTTON2;
+                break;
+            }
+            return new(buttonInput);
+        }
+        public static INPUT BuildMouseButtonDown(EMouseButton mouseButton) => BuildMouseButton(mouseButton, buttonDown: true);
+        public static INPUT BuildMouseButtonUp(EMouseButton mouseButton) => BuildMouseButton(mouseButton, buttonDown: false);
+        public static INPUT[] BuildMouseButtonClick(EMouseButton mouseButton, int clickCount = 1)
+        {
+            if (clickCount <= 0) throw new ArgumentOutOfRangeException(nameof(clickCount), clickCount, $"Expected a value greater than 0 for {nameof(clickCount)}; actual value was {clickCount}.");
+
+            return new INPUT[clickCount * 2].SetValuesTo(new INPUT[]
+            {
+                BuildMouseButtonDown(mouseButton),
+                BuildMouseButtonUp(mouseButton)
+            });
+        }
+        #endregion BuildMouseButton...
+
+        #region BuildMouseMoveTo
+        public static INPUT BuildMouseMoveTo(int xPosition, int yPosition, RECT virtualScreenRect, bool primaryMonitorOnly = false)
+        {
+            return new INPUT(new MOUSEINPUT()
+            {
+                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_MOVE | MOUSEINPUT.Flags.MOUSEEVENTF_ABSOLUTE | MOUSEINPUT.Flags.MOUSEEVENTF_VIRTUALDESK,
+                dx = ToAbsCoordinateX(xPosition, virtualScreenRect),
+                dy = ToAbsCoordinateY(yPosition, virtualScreenRect),
+            });
+        }
+        public static INPUT BuildMouseMoveTo(int x, int y, uint dpi, bool primaryMonitorOnly = false)
+            => BuildMouseMoveTo(x, y, NativeMethods.GetVirtualScreenRect(dpi), primaryMonitorOnly);
+        public static INPUT BuildMouseMoveTo(int x, int y, bool primaryMonitorOnly = false)
+            => BuildMouseMoveTo(x, y, NativeMethods.GetVirtualScreenRect(), primaryMonitorOnly);
+        #endregion BuildMouseMoveTo
+
+        #region BuildMouseMoveToAbs
+        public static INPUT BuildMouseMoveToAbs(int absX, int absY, bool primaryMonitorOnly = false)
+        {
+            var mouseInput = new MOUSEINPUT()
+            {
+                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_MOVE | MOUSEINPUT.Flags.MOUSEEVENTF_VIRTUALDESK,
+                dx = absX,
+                dy = absY,
+            };
+
+            if (!primaryMonitorOnly)
+                mouseInput.dwFlags |= MOUSEINPUT.Flags.MOUSEEVENTF_VIRTUALDESK;
+
+            return new(mouseInput);
+        }
+        #endregion BuildMouseMoveToAbs
+
+        public static INPUT BuildMouseHorizontalScroll(int horizontalDelta)
+        {
+            return new(new MOUSEINPUT()
+            {
+                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_HWHEEL,
+                mouseData = horizontalDelta
+            });
+        }
+        public static INPUT[] BuildMouseHorizontalScroll(int horizontalDelta, int count)
+        {
+            return new INPUT[count].SetValuesTo(BuildMouseHorizontalScroll(horizontalDelta));
+        }
 
         #endregion Mouse
     }

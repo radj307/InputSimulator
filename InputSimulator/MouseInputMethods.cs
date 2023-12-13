@@ -176,218 +176,113 @@ namespace InputSimulator
         /// <param name="delta">The delta (change amount) to apply to the mouse wheel. Negative values scroll left, positive values scroll right.</param>
         /// <returns><see langword="true"/> when successful; otherwise, <see langword="false"/>.</returns>
         public static bool HorizontalScrollBy(int horizontalDelta)
-        {
-            return NativeMethods.SendInput(new INPUT(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_HWHEEL,
-                mouseData = horizontalDelta
-            }));
-        }
+            => NativeMethods.SendInput(InputHelper.BuildMouseHorizontalScroll(horizontalDelta));
         #endregion HorizontalScrollBy
 
         #region HorizontalScroll
-        /// <summary>
-        /// Synthesizes scrolling horizontally by the specified amount.
-        /// </summary>
-        /// <param name="count">The number of times to scroll. Negative values scroll left, positive values scroll right.</param>
-        /// <param name="delta">The delta (change amount) to apply to the mouse wheel each time.</param>
-        /// <returns><see langword="true"/> when successful; otherwise, <see langword="false"/>.</returns>
-        public static bool HorizontalScroll(int count, uint delta)
-            => HorizontalScrollBy(unchecked((int)delta) * count);
-        /// <inheritdoc cref="HorizontalScroll(int, uint)"/>
-        public static bool HorizontalScroll(int count)
-            => HorizontalScroll(count, WHEEL_DELTA);
+        public static bool HorizontalScroll(int count, int horizontalDelta)
+            => NativeMethods.SendInput(InputHelper.BuildMouseHorizontalScroll(horizontalDelta, count));
+        public static bool ScrollRight(int count) => HorizontalScroll(count, WHEEL_DELTA);
+        public static bool ScrollRight() => ScrollRight(1);
+        public static bool ScrollLeft(int count) => HorizontalScroll(count, -WHEEL_DELTA);
+        public static bool ScrollLeft() => ScrollLeft(1);
         #endregion HorizontalScroll
+
+        #region Button...
+        public static bool ButtonDown(EMouseButton mouseButton)
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonDown(mouseButton));
+        public static bool ButtonUp(EMouseButton mouseButton)
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonUp(mouseButton));
+        public static bool ButtonClick(EMouseButton mouseButton, int count)
+            => count * 2 == NativeMethods.SendInputs(InputHelper.BuildMouseButtonClick(mouseButton, count));
+        public static bool ButtonClick(EMouseButton mouseButton) => ButtonClick(mouseButton, count: 1);
+        public static bool ButtonDoubleClick(EMouseButton mouseButton) => ButtonClick(mouseButton, count: 2);
+        #endregion Button...
+
+        #region ButtonClickAt
+        public static bool ButtonClickAt(EMouseButton mouseButton, int clickCount, int x, int y, RECT virtualScreenRect)
+        {
+            var currentMousePos = NativeMethods.GetCursorPos();
+            return NativeMethods.SendInput(InputHelper.ExpandInputs(
+                InputHelper.BuildMouseMoveTo(x, y, virtualScreenRect),
+                InputHelper.BuildMouseButtonClick(mouseButton, clickCount),
+                InputHelper.BuildMouseMoveTo(currentMousePos.x, currentMousePos.y, virtualScreenRect)));
+        }
+        public static bool ButtonClickAt(EMouseButton mouseButton, int x, int y, RECT virtualScreenRect)
+            => ButtonClickAt(mouseButton, 1, x, y, virtualScreenRect);
+        public static bool ButtonClickAt(EMouseButton mouseButton, int clickCount, int x, int y, uint dpi)
+            => ButtonClickAt(mouseButton, clickCount, x, y, NativeMethods.GetVirtualScreenRect(dpi));
+        public static bool ButtonClickAt(EMouseButton mouseButton, int clickCount, int x, int y)
+            => ButtonClickAt(mouseButton, clickCount, x, y, NativeMethods.GetVirtualScreenRect());
+        public static bool ButtonClickAt(EMouseButton mouseButton, int x, int y, uint dpi)
+            => ButtonClickAt(mouseButton, 1, x, y, NativeMethods.GetVirtualScreenRect(dpi));
+        public static bool ButtonClickAt(EMouseButton mouseButton, int x, int y)
+            => ButtonClickAt(mouseButton, 1, x, y, NativeMethods.GetVirtualScreenRect());
+        #endregion ButtonClickAt
 
         #region LeftButton
         public static bool LeftButtonDown()
-            => NativeMethods.SendInput(new INPUT(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_LEFTDOWN
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonDown(EMouseButton.Left));
         public static bool LeftButtonUp()
-            => NativeMethods.SendInput(new INPUT(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_LEFTUP
-            }));
-        public static void LeftButtonClick()
-            => NativeMethods.SendInput(new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_LEFTDOWN
-            }), new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_LEFTUP
-            }));
-        public static void LeftButtonDoubleClick()
-            => NativeMethods.SendInput(new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_LEFTDOWN
-            }), new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_LEFTUP
-            }), new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_LEFTDOWN
-            }), new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_LEFTUP
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonUp(EMouseButton.Left));
+        public static bool LeftButtonClick(int count)
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.Left, count));
+        public static bool LeftButtonClick()
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.Left));
+        public static bool LeftButtonDoubleClick()
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.Left, 2));
         #endregion LeftButton
 
         #region RightButton
         public static bool RightButtonDown()
-            => NativeMethods.SendInput(new INPUT(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_RIGHTDOWN
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonUp(EMouseButton.Right));
         public static bool RightButtonUp()
-            => NativeMethods.SendInput(new INPUT(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_RIGHTUP
-            }));
-        public static void RightButtonClick()
-            => NativeMethods.SendInput(new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_RIGHTDOWN
-            }), new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_RIGHTUP
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonUp(EMouseButton.Right));
+        public static bool RightButtonClick(int count)
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.Right, count));
+        public static bool RightButtonClick()
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.Right, 1));
         public static void RightButtonDoubleClick()
-            => NativeMethods.SendInput(new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_RIGHTDOWN
-            }), new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_RIGHTUP
-            }), new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_RIGHTDOWN
-            }), new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_RIGHTUP
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.Right, 2));
         #endregion RightButton
 
         #region MiddleButton
         public static bool MiddleButtonDown()
-            => NativeMethods.SendInput(new INPUT(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_MIDDLEDOWN
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonUp(EMouseButton.Middle));
         public static bool MiddleButtonUp()
-            => NativeMethods.SendInput(new INPUT(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_MIDDLEUP
-            }));
-        public static void MiddleButtonClick()
-            => NativeMethods.SendInput(new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_MIDDLEDOWN
-            }), new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_MIDDLEUP
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonUp(EMouseButton.Middle));
+        public static bool MiddleButtonClick(int count)
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.Middle, count));
+        public static bool MiddleButtonClick()
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.Middle, 1));
         public static void MiddleButtonDoubleClick()
-            => NativeMethods.SendInput(new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_MIDDLEDOWN
-            }), new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_MIDDLEUP
-            }), new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_MIDDLEDOWN
-            }), new(new MOUSEINPUT()
-            {
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_MIDDLEUP
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.Middle, 2));
         #endregion MiddleButton
 
         #region XButton1
         public static bool XButton1Down()
-            => NativeMethods.SendInput(new INPUT(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON1,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XDOWN
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonUp(EMouseButton.X1));
         public static bool XButton1Up()
-            => NativeMethods.SendInput(new INPUT(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON1,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XUP
-            }));
-        public static void XButton1Click()
-            => NativeMethods.SendInput(new(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON1,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XDOWN
-            }), new(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON1,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XUP
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonUp(EMouseButton.X1));
+        public static bool XButton1Click(int count)
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.X1, count));
+        public static bool XButton1Click()
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.X1, 1));
         public static void XButton1DoubleClick()
-            => NativeMethods.SendInput(new(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON1,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XDOWN
-            }), new(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON1,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XUP
-            }), new(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON1,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XDOWN
-            }), new(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON1,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XUP
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.X1, 2));
         #endregion XButton1
 
         #region XButton2
         public static bool XButton2Down()
-            => NativeMethods.SendInput(new INPUT(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON2,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XDOWN
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonUp(EMouseButton.X2));
         public static bool XButton2Up()
-            => NativeMethods.SendInput(new INPUT(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON2,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XUP
-            }));
-        public static void XButton2Click()
-            => NativeMethods.SendInput(new(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON2,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XDOWN
-            }), new(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON2,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XUP
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonUp(EMouseButton.X2));
+        public static bool XButton2Click(int count)
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.X2, count));
+        public static bool XButton2Click()
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.X2, 1));
         public static void XButton2DoubleClick()
-            => NativeMethods.SendInput(new(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON2,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XDOWN
-            }), new(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON2,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XUP
-            }), new(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON2,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XDOWN
-            }), new(new MOUSEINPUT()
-            {
-                mouseData = MOUSEINPUT.XBUTTON2,
-                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_XUP
-            }));
+            => NativeMethods.SendInput(InputHelper.BuildMouseButtonClick(EMouseButton.X2, 2));
         #endregion XButton2
     }
 }

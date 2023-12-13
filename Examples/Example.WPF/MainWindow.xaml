@@ -12,5 +12,8 @@
     mc:Ignorable="d">
     <Grid>
         <!--    -->
+        <StackPanel Orientation="Horizontal">
+            <!--    -->
+        </StackPanel>
     </Grid>
 </Window>
