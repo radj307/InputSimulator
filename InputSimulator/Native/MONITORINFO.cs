@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.Runtime.InteropServices;
 
 namespace InputSimulator.Native
 {
@@ -6,6 +7,10 @@ namespace InputSimulator.Native
     public struct MONITORINFO
     {
         #region Constructor
+        /// <summary>
+        /// Creates a blank <see cref="MONITORINFO"/> structure.
+        /// </summary>
+        [Obsolete($"You should use {nameof(NativeMethods)}.{nameof(NativeMethods.GetMonitorInfo)} to get a {nameof(MONITORINFO)} struct instead of calling the constructor.", error: true)]
         public MONITORINFO() { }
         #endregion Constructor
 
@@ -29,6 +34,11 @@ namespace InputSimulator.Native
         /// </summary>
         public Flags dwFlags;
         #endregion Fields
+
+        #region Properties
+        /// <returns><see langword="true"/> when the monitor is the primary display monitor; otherwise, <see langword="false"/>.</returns>
+        public bool IsPrimaryMonitor => dwFlags.HasFlag(Flags.MONITORINFOF_PRIMARY);
+        #endregion Properties
 
         #region (Enum) Flags
         public enum Flags : uint

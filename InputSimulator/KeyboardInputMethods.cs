@@ -10,37 +10,67 @@ namespace InputSimulator
     /// </summary>
     public static class KeyboardInputMethods
     {
+        #region KeyState
+        /// <summary>
+        /// Synthesizes (de)pressing (▼|▲) the specified <paramref name="key"/>, depending on the specified <paramref name="state"/>.
+        /// </summary>
+        /// <param name="key">The key code to inject a key event for.</param>
+        /// <param name="scanCode">The scan code for the specified <paramref name="key"/>.</param>
+        /// <param name="state">Whether to inject a KeyDown or KeyUp event.</param>
+        /// <returns><see langword="true"/> when successful; otherwise, <see langword="false"/>.</returns>
+        public static bool KeyState(EVirtualKeyCode key, ushort scanCode, EKeyState state)
+        {
+            return NativeMethods.SendInput(InputHelper.BuildKeyState(key, scanCode, state));
+        }
+        /// <inheritdoc cref="KeyState(EVirtualKeyCode, ushort, EKeyState)"/>
+        public static bool KeyState(EVirtualKeyCode key, ushort scanCode, bool keyDown) => KeyState(key, scanCode, keyDown ? EKeyState.Down : EKeyState.Up);
+        /// <summary>
+        /// Synthesizes (de)pressing (▼|▲) the specified <paramref name="key"/>, depending on the specified <paramref name="state"/>.
+        /// The associated scan code will be determined automatically.
+        /// </summary>
+        /// <inheritdoc cref="KeyState(EVirtualKeyCode, ushort, EKeyState)"/>
+        public static bool KeyState(EVirtualKeyCode key, EKeyState state)
+        {
+            return NativeMethods.SendInput(InputHelper.BuildKeyState(key, state));
+        }
+        /// <inheritdoc cref="KeyState(EVirtualKeyCode, EKeyState)"/>
+        /// <param name="keyDown"><see langword="true"/> is <see cref="EKeyState.Down"/>; <see langword="false"/> is <see cref="EKeyState.Up"/>.</param>
+        public static bool KeyState(EVirtualKeyCode key, bool keyDown) => KeyState(key, keyDown ? EKeyState.Down : EKeyState.Up);
+        #endregion KeyState
+
         #region KeyDown
         /// <summary>
-        /// Synthesizes the specified <paramref name="key"/> being pressed.
+        /// Synthesizes pressing (▼) the specified <paramref name="key"/>.
         /// </summary>
-        /// <param name="key">The <see cref="EVirtualKeyCode"/> value associated with the key to simulate pressing.</param>
+        /// <param name="key">The key code to inject a key down event for.</param>
+        /// <param name="scanCode">The scan code for the specified <paramref name="key"/>.</param>
         /// <returns><see langword="true"/> when successful; otherwise, <see langword="false"/>.</returns>
-        public static bool KeyDown(EVirtualKeyCode key)
-            => NativeMethods.SendInput(new INPUT(new KEYBDINPUT()
-            {
-                wVk = key
-            }));
+        public static bool KeyDown(EVirtualKeyCode key, ushort scanCode) => KeyState(key, scanCode, EKeyState.Down);
         /// <summary>
-        /// Synthesizes pressing the specified <paramref name="keys"/> in sequence.
+        /// Synthesizes pressing (▼) the specified <paramref name="key"/>.
+        /// The associated scan code will be determined automatically.
         /// </summary>
-        /// <remarks>
-        /// Differs from <see cref="KeyStrokeDown(IEnumerable{EVirtualKeyCode})"/> in that each key is pressed one after the other, rather than all at once.
-        /// </remarks>
-        /// <param name="keys">Any number of <see cref="EVirtualKeyCode"/> values associated with the keys to press.</param>
-        /// <returns>The number of key inputs that were successfully sent.</returns>
+        /// <inheritdoc cref="KeyDown(EVirtualKeyCode, ushort)"/>
+        public static bool KeyDown(EVirtualKeyCode key) => KeyState(key, EKeyState.Down);
+
+        // with multiple keys:
+
+        /// <summary>
+        /// Synthesizes pressing (▼) the specified <paramref name="keys"/>.
+        /// The associated scan codes will be determined automatically.
+        /// </summary>
+        /// <param name="keys">An enumerable list of key codes to inject key down events for.</param>
+        /// <returns>The number of inputs that were successfully injected.</returns>
         public static uint KeyDown(IEnumerable<EVirtualKeyCode> keys)
         {
             List<INPUT> inputs = new();
             foreach (var key in keys)
             {
-                inputs.Add(new(new KEYBDINPUT()
-                {
-                    wVk = key
-                }));
+                inputs.Add(InputHelper.BuildKeyDown(key));
             }
             return NativeMethods.SendInputs(inputs);
         }
+        /// <param name="keys">An array of key codes to inject key down events for.</param>
         /// <inheritdoc cref="KeyDown(IEnumerable{EVirtualKeyCode})"/>
         public static uint KeyDown(params EVirtualKeyCode[] keys)
         {
@@ -48,10 +78,60 @@ namespace InputSimulator
             var inputs = new INPUT[keysCount];
             for (int i = 0; i < keysCount; ++i)
             {
-                inputs[i] = new(new KEYBDINPUT()
-                {
-                    wVk = keys[i]
-                });
+                inputs[i] = InputHelper.BuildKeyDown(keys[i]);
+            }
+            return NativeMethods.SendInputs(inputs);
+        }
+
+        // with multiple key-scan code pairs:
+
+        /// <summary>
+        /// Synthesizes pressing (▼) the specified keys.
+        /// The associated scan codes will be determined automatically.
+        /// </summary>
+        /// <param name="keyScanCodePairs">An enumerable list of key-scan code pairs to inject key down events for.</param>
+        /// <returns>The number of inputs that were successfully injected.</returns>
+        public static uint KeyDown(IEnumerable<KeyValuePair<EVirtualKeyCode, ushort>> keyScanCodePairs)
+        {
+            List<INPUT> inputs = new();
+            foreach (var (key, scanCode) in keyScanCodePairs)
+            {
+                inputs.Add(InputHelper.BuildKeyDown(key, scanCode));
+            }
+            return NativeMethods.SendInputs(inputs);
+        }
+        /// <inheritdoc cref="KeyDown(IEnumerable{KeyValuePair{EVirtualKeyCode, ushort}})"/>
+        public static uint KeyDown(IEnumerable<(EVirtualKeyCode Key, ushort ScanCode)> keyScanCodePairs)
+        {
+            List<INPUT> inputs = new();
+            foreach (var (key, scanCode) in keyScanCodePairs)
+            {
+                inputs.Add(InputHelper.BuildKeyDown(key, scanCode));
+            }
+            return NativeMethods.SendInputs(inputs);
+        }
+        /// <param name="keys">Array of key-scan code pairs to inject key down events for.</param>
+        /// <inheritdoc cref="KeyDown(IEnumerable{EVirtualKeyCode})"/>
+        public static uint KeyDown(params KeyValuePair<EVirtualKeyCode, ushort>[] keys)
+        {
+            var keysCount = keys.Length;
+            var inputs = new INPUT[keysCount];
+            for (int i = 0; i < keysCount; ++i)
+            {
+                var (key, scanCode) = keys[i];
+                inputs[i] = InputHelper.BuildKeyDown(key, scanCode);
+            }
+            return NativeMethods.SendInputs(inputs);
+        }
+        /// <inheritdoc cref="KeyDown(IEnumerable{KeyValuePair{EVirtualKeyCode, ushort}})"/>
+        public static uint KeyDown(params (EVirtualKeyCode Key, ushort ScanCode)[] keys)
+        {
+            var keysCount = keys.Length;
+            var inputs = new INPUT[keysCount];
+            for (int i = 0; i < keysCount; ++i)
+            {
+                var (key, scanCode) = keys[i];
+                inputs[i] = InputHelper.BuildKeyDown(key, scanCode);
             }
             return NativeMethods.SendInputs(inputs);
         }
@@ -59,37 +139,37 @@ namespace InputSimulator
 
         #region KeyUp
         /// <summary>
-        /// Synthesizes the specified <paramref name="key"/> being released.
+        /// Synthesizes depressing (▲) the specified <paramref name="key"/>.
         /// </summary>
-        /// <param name="key">The <see cref="EVirtualKeyCode"/> value associated with the key to simulate pressing.</param>
+        /// <param name="key">The key code to inject a key up event for.</param>
+        /// <param name="scanCode">The scan code for the specified <paramref name="key"/>.</param>
         /// <returns><see langword="true"/> when successful; otherwise, <see langword="false"/>.</returns>
-        public static bool KeyUp(EVirtualKeyCode key)
-            => NativeMethods.SendInput(new INPUT(new KEYBDINPUT()
-            {
-                wVk = key,
-                dwFlags = KEYBDINPUT.Flags.KEYEVENTF_KEYUP
-            }));
+        public static bool KeyUp(EVirtualKeyCode key, ushort scanCode) => KeyState(key, scanCode, EKeyState.Up);
         /// <summary>
-        /// Synthesizes releasing the specified <paramref name="keys"/> in sequence.
+        /// Synthesizes depressing (▲) the specified <paramref name="key"/>.
+        /// The associated scan code will be determined automatically.
         /// </summary>
-        /// <remarks>
-        /// Differs from <see cref="KeyStrokeUp(IEnumerable{EVirtualKeyCode})"/> in that each key is released one after the other, rather than all at once.
-        /// </remarks>
-        /// <param name="keys">Any number of <see cref="EVirtualKeyCode"/> values associated with the keys to release.</param>
-        /// <returns>The number of key inputs that were successfully sent.</returns>
+        /// <inheritdoc cref="KeyUp(EVirtualKeyCode, ushort)"/>
+        public static bool KeyUp(EVirtualKeyCode key) => KeyState(key, EKeyState.Up);
+
+        // with multiple keys:
+
+        /// <summary>
+        /// Synthesizes depressing (▲) the specified <paramref name="keys"/>.
+        /// The associated scan codes will be determined automatically.
+        /// </summary>
+        /// <param name="keys">An enumerable list of key codes to inject key up events for.</param>
+        /// <returns>The number of inputs that were successfully injected.</returns>
         public static uint KeyUp(IEnumerable<EVirtualKeyCode> keys)
         {
             List<INPUT> inputs = new();
             foreach (var key in keys)
             {
-                inputs.Add(new(new KEYBDINPUT()
-                {
-                    wVk = key,
-                    dwFlags = KEYBDINPUT.Flags.KEYEVENTF_KEYUP
-                }));
+                inputs.Add(InputHelper.BuildKeyUp(key));
             }
             return NativeMethods.SendInputs(inputs);
         }
+        /// <param name="keys">An array of key codes to inject key up events for.</param>
         /// <inheritdoc cref="KeyUp(IEnumerable{EVirtualKeyCode})"/>
         public static uint KeyUp(params EVirtualKeyCode[] keys)
         {
@@ -97,10 +177,60 @@ namespace InputSimulator
             var inputs = new INPUT[keysCount];
             for (int i = 0; i < keysCount; ++i)
             {
-                inputs[i] = new(new KEYBDINPUT()
-                {
-                    wVk = keys[i]
-                });
+                inputs[i] = InputHelper.BuildKeyUp(keys[i]);
+            }
+            return NativeMethods.SendInputs(inputs);
+        }
+
+        // with multiple key-scan code pairs:
+
+        /// <summary>
+        /// Synthesizes depressing (▲) the specified keys.
+        /// The associated scan codes will be determined automatically.
+        /// </summary>
+        /// <param name="keyScanCodePairs">An enumerable list of key-scan code pairs to inject key up events for.</param>
+        /// <returns>The number of inputs that were successfully injected.</returns>
+        public static uint KeyUp(IEnumerable<KeyValuePair<EVirtualKeyCode, ushort>> keyScanCodePairs)
+        {
+            List<INPUT> inputs = new();
+            foreach (var (key, scanCode) in keyScanCodePairs)
+            {
+                inputs.Add(InputHelper.BuildKeyUp(key, scanCode));
+            }
+            return NativeMethods.SendInputs(inputs);
+        }
+        /// <inheritdoc cref="KeyUp(IEnumerable{KeyValuePair{EVirtualKeyCode, ushort}})"/>
+        public static uint KeyUp(IEnumerable<(EVirtualKeyCode Key, ushort ScanCode)> keyScanCodePairs)
+        {
+            List<INPUT> inputs = new();
+            foreach (var (key, scanCode) in keyScanCodePairs)
+            {
+                inputs.Add(InputHelper.BuildKeyUp(key, scanCode));
+            }
+            return NativeMethods.SendInputs(inputs);
+        }
+        /// <param name="keys">Array of key-scan code pairs to inject key up events for.</param>
+        /// <inheritdoc cref="KeyUp(IEnumerable{EVirtualKeyCode})"/>
+        public static uint KeyUp(params KeyValuePair<EVirtualKeyCode, ushort>[] keys)
+        {
+            var keysCount = keys.Length;
+            var inputs = new INPUT[keysCount];
+            for (int i = 0; i < keysCount; ++i)
+            {
+                var (key, scanCode) = keys[i];
+                inputs[i] = InputHelper.BuildKeyUp(key, scanCode);
+            }
+            return NativeMethods.SendInputs(inputs);
+        }
+        /// <inheritdoc cref="KeyUp(IEnumerable{KeyValuePair{EVirtualKeyCode, ushort}})"/>
+        public static uint KeyUp(params (EVirtualKeyCode Key, ushort ScanCode)[] keys)
+        {
+            var keysCount = keys.Length;
+            var inputs = new INPUT[keysCount];
+            for (int i = 0; i < keysCount; ++i)
+            {
+                var (key, scanCode) = keys[i];
+                inputs[i] = InputHelper.BuildKeyUp(key, scanCode);
             }
             return NativeMethods.SendInputs(inputs);
         }
@@ -108,46 +238,36 @@ namespace InputSimulator
 
         #region KeyPress
         /// <summary>
-        /// Synthesizes a key press of the specified <paramref name="key"/>, including a KeyDown &amp; KeyUp event.
+        /// Synthesizes pressing &amp; depressing (▼▲) the specified <paramref name="key"/>.
         /// </summary>
-        /// <param name="key">The <see cref="EVirtualKeyCode"/> value associated with the key to simulate pressing.</param>
-        /// <returns><see langword="true"/> when successful; otherwise, <see langword="false"/> when either the key down or key up event failed.</returns>
+        /// <param name="key">The key code to inject a key down &amp; key up event for.</param>
+        /// <param name="scanCode">The scan code for the specified <paramref name="key"/>.</param>
+        /// <returns><see langword="true"/> when successful; otherwise, <see langword="false"/>.</returns>
+        public static bool KeyPress(EVirtualKeyCode key, ushort scanCode)
+            => NativeMethods.SendInput(InputHelper.BuildKeyPress(key, scanCode));
+        /// <inheritdoc cref="KeyPress(EVirtualKeyCode, ushort)"/>
         public static bool KeyPress(EVirtualKeyCode key)
-            => 2u == NativeMethods.SendInputs(
-                new(new KEYBDINPUT()
-                { // key down
-                    wVk = key
-                }),
-                new(new KEYBDINPUT()
-                { // key up
-                    wVk = key,
-                    dwFlags = KEYBDINPUT.Flags.KEYEVENTF_KEYUP
-                }));
+            => NativeMethods.SendInput(InputHelper.BuildKeyPress(key));
+
+        // with multiple keys
+
         /// <summary>
-        /// Synthesizes pressing &amp; releasing the specified <paramref name="keys"/> in sequence.
+        /// Synthesizes pressing &amp; depressing (▼▲) the specified <paramref name="keys"/>.
+        /// The associated scan codes will be determined automatically.
         /// </summary>
-        /// <remarks>
-        /// Differs from <see cref="KeyStroke(IEnumerable{EVirtualKeyCode})"/> in that each key is pressed &amp; released one after the other, rather than all at once.
-        /// </remarks>
-        /// <param name="keys">Any number of <see cref="EVirtualKeyCode"/> values associated with the keys to press &amp; release.</param>
-        /// <returns>The number of key inputs that were successfully sent.</returns>
+        /// <param name="keys">An enumerable list of key codes to inject key down &amp; key up events for.</param>
+        /// <returns>The number of inputs that were successfully injected.</returns>
         public static uint KeyPress(IEnumerable<EVirtualKeyCode> keys)
         {
             List<INPUT> inputs = new();
             foreach (var key in keys)
             {
-                inputs.Add(new(new KEYBDINPUT()
-                { // key down
-                    wVk = key
-                }));
-                inputs.Add(new(new KEYBDINPUT()
-                { // key up
-                    wVk = key,
-                    dwFlags = KEYBDINPUT.Flags.KEYEVENTF_KEYUP
-                }));
+                inputs.Add(InputHelper.BuildKeyDown(key));
+                inputs.Add(InputHelper.BuildKeyUp(key));
             }
             return NativeMethods.SendInputs(inputs);
         }
+        /// <param name="keys">An array of key codes to inject key key down &amp; key up events for.</param>
         /// <inheritdoc cref="KeyPress(IEnumerable{EVirtualKeyCode})"/>
         public static uint KeyPress(params EVirtualKeyCode[] keys)
         {
@@ -157,15 +277,66 @@ namespace InputSimulator
             for (int i = 0; i < keysCount; ++i)
             {
                 var key = keys[i];
-                inputs[i_inputs++] = new(new KEYBDINPUT()
-                {
-                    wVk = key
-                });
-                inputs[i_inputs++] = new(new KEYBDINPUT()
-                {
-                    wVk = key,
-                    dwFlags = KEYBDINPUT.Flags.KEYEVENTF_KEYUP
-                });
+                inputs[i_inputs++] = InputHelper.BuildKeyDown(key);
+                inputs[i_inputs++] = InputHelper.BuildKeyUp(key);
+            }
+            return NativeMethods.SendInputs(inputs);
+        }
+
+        // with multiple key-scan code pairs
+
+        /// <summary>
+        /// Synthesizes pressing &amp; depressing (▼▲) the specified keys.
+        /// </summary>
+        /// <param name="keyScanCodePairs">An enumerable list of key-scan code pairs to inject key up events for.</param>
+        /// <inheritdoc cref="KeyPress(IEnumerable{EVirtualKeyCode})"/>
+        public static uint KeyPress(IEnumerable<KeyValuePair<EVirtualKeyCode, ushort>> keyScanCodePairs)
+        {
+            List<INPUT> inputs = new();
+            foreach (var (key, scanCode) in keyScanCodePairs)
+            {
+                inputs.Add(InputHelper.BuildKeyDown(key, scanCode));
+                inputs.Add(InputHelper.BuildKeyUp(key, scanCode));
+            }
+            return NativeMethods.SendInputs(inputs);
+        }
+        /// <inheritdoc cref="KeyPress(IEnumerable{KeyValuePair{EVirtualKeyCode, ushort}})"/>
+        public static uint KeyPress(IEnumerable<(EVirtualKeyCode Key, ushort ScanCode)> keyScanCodePairs)
+        {
+            List<INPUT> inputs = new();
+            foreach (var (key, scanCode) in keyScanCodePairs)
+            {
+                inputs.Add(InputHelper.BuildKeyDown(key, scanCode));
+                inputs.Add(InputHelper.BuildKeyUp(key, scanCode));
+            }
+            return NativeMethods.SendInputs(inputs);
+        }
+        /// <param name="keyScanCodePairs">An enumerable list of key-scan code pairs to inject key up events for.</param>
+        /// <inheritdoc cref="KeyPress(IEnumerable{KeyValuePair{EVirtualKeyCode, ushort}})"/>
+        public static uint KeyPress(params KeyValuePair<EVirtualKeyCode, ushort>[] keyScanCodePairs)
+        {
+            var keysCount = keyScanCodePairs.Length;
+            var inputs = new INPUT[keysCount * 2];
+            int i_inputs = 0;
+            for (int i = 0; i < keysCount; ++i)
+            {
+                var (key, scanCode) = keyScanCodePairs[i];
+                inputs[i_inputs++] = InputHelper.BuildKeyDown(key, scanCode);
+                inputs[i_inputs++] = InputHelper.BuildKeyUp(key, scanCode);
+            }
+            return NativeMethods.SendInputs(inputs);
+        }
+        /// <inheritdoc cref="KeyPress(KeyValuePair{EVirtualKeyCode, ushort}[])"/>
+        public static uint KeyPress(params (EVirtualKeyCode Key, ushort ScanCode)[] keyScanCodePairs)
+        {
+            var keysCount = keyScanCodePairs.Length;
+            var inputs = new INPUT[keysCount * 2];
+            int i_inputs = 0;
+            for (int i = 0; i < keysCount; ++i)
+            {
+                var (key, scanCode) = keyScanCodePairs[i];
+                inputs[i_inputs++] = InputHelper.BuildKeyDown(key, scanCode);
+                inputs[i_inputs++] = InputHelper.BuildKeyUp(key, scanCode);
             }
             return NativeMethods.SendInputs(inputs);
         }
@@ -173,19 +344,10 @@ namespace InputSimulator
 
         #region KeyStrokeDown
         /// <summary>
-        /// Synthesizes pressing the specified <paramref name="keys"/> at the same time.
+        /// Synthesizes pressing (▼...,▼...) the specified <paramref name="modifierKeys"/>, then the specified <paramref name="keys"/>.
         /// </summary>
-        /// <param name="keys">The keys in the key stroke.</param>
-        public static void KeyStrokeDown(params EVirtualKeyCode[] keys)
-            => NativeMethods.SendInputs(InputHelper.BuildKeyStrokeDown(Array.Empty<EVirtualKeyCode>(), keys));
-        /// <inheritdoc cref="KeyStrokeDown(EVirtualKeyCode[])"/>
-        public static void KeyStrokeDown(IEnumerable<EVirtualKeyCode> keys)
-            => KeyStrokeDown(keys.ToArray());
-
-        // with enumerable modifier keys:
-
-        /// <inheritdoc cref="KeyStrokeDown(IEnumerable{EVirtualKeyCode})"/>
         /// <param name="modifierKeys">The modifier keys in the key stroke.</param>
+        /// <param name="keys">The keys in the key stroke.</param>
         public static void KeyStrokeDown(IEnumerable<EVirtualKeyCode> modifierKeys, IEnumerable<EVirtualKeyCode> keys)
             => NativeMethods.SendInputs(InputHelper.BuildKeyStrokeDown(modifierKeys.ToArray(), keys.ToArray()));
 
@@ -201,19 +363,10 @@ namespace InputSimulator
 
         #region KeyStrokeUp
         /// <summary>
-        /// Synthesizes releasing the specified <paramref name="keys"/> at the same time.
+        /// Synthesizes releasing (▲...,▲...) the specified <paramref name="keys"/>, then the specified <paramref name="modifierKeys"/>.
         /// </summary>
-        /// <param name="keys">The keys in the key stroke.</param>
-        public static void KeyStrokeUp(params EVirtualKeyCode[] keys)
-            => NativeMethods.SendInputs(InputHelper.BuildKeyStrokeUp(Array.Empty<EVirtualKeyCode>(), keys));
-        /// <inheritdoc cref="KeyStrokeUp(EVirtualKeyCode[])"/>
-        public static void KeyStrokeUp(IEnumerable<EVirtualKeyCode> keys)
-            => KeyStrokeUp(keys.ToArray());
-
-        // with enumerable modifier keys:
-
-        /// <inheritdoc cref="KeyStrokeUp(IEnumerable{EVirtualKeyCode})"/>
         /// <param name="modifierKeys">The modifier keys in the key stroke.</param>
+        /// <param name="keys">The keys in the key stroke.</param>
         public static void KeyStrokeUp(IEnumerable<EVirtualKeyCode> modifierKeys, IEnumerable<EVirtualKeyCode> keys)
             => NativeMethods.SendInputs(InputHelper.BuildKeyStrokeUp(modifierKeys.ToArray(), keys.ToArray()));
 
@@ -229,7 +382,7 @@ namespace InputSimulator
 
         #region KeyStroke
         /// <summary>
-        /// Synthesizes pressing and then releasing the specified <paramref name="keys"/> at the same time.
+        /// Synthesizes pressing and then releasing (▼...,▲...) the specified <paramref name="keys"/> at the same time.
         /// </summary>
         /// <param name="keys">The keys in the key stroke.</param>
         public static void KeyStroke(params EVirtualKeyCode[] keys)

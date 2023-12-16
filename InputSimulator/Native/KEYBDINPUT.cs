@@ -4,10 +4,10 @@ using System.Runtime.InteropServices;
 namespace InputSimulator.Native
 {
     /// <summary>
-    /// 
+    /// Defines a simulated keyboard input event.
     /// </summary>
     /// <remarks>
-    /// <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-keybdinput"/>
+    /// MSDN Documentation: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-keybdinput"/>
     /// </remarks>
     [StructLayout(LayoutKind.Sequential)]
     public struct KEYBDINPUT
@@ -67,13 +67,28 @@ namespace InputSimulator.Native
         #endregion (Enum) Flags
 
         #region Methods
-        public static KEYBDINPUT GetKeyDown(EVirtualKeyCode keyCode)
-            => new() { wVk = keyCode };
-        public static KEYBDINPUT GetKeyUp(EVirtualKeyCode keyCode)
-            => new() { wVk = keyCode, dwFlags = Flags.KEYEVENTF_KEYUP };
+        public static KEYBDINPUT GetKeyDown(EVirtualKeyCode keyCode, ushort scanCode)
+            => new()
+            {
+                wVk = keyCode,
+                wScan = scanCode
+            };
+        public static KEYBDINPUT GetKeyDown(EVirtualKeyCode keyCode) => GetKeyDown(keyCode, NativeMethods.VirtualKeyCodeToScanCode(keyCode));
+        public static KEYBDINPUT GetKeyUp(EVirtualKeyCode keyCode, ushort scanCode)
+            => new()
+            {
+                wVk = keyCode,
+                dwFlags = Flags.KEYEVENTF_KEYUP,
+                wScan = scanCode
+            };
+        public static KEYBDINPUT GetKeyUp(EVirtualKeyCode keyCode) => GetKeyUp(keyCode, NativeMethods.VirtualKeyCodeToScanCode(keyCode));
         public static KEYBDINPUT GetKeyDown(char @char, bool isExtendedKey)
         {
-            var keyDownInput = new KEYBDINPUT() { wScan = @char, dwFlags = Flags.KEYEVENTF_UNICODE };
+            var keyDownInput = new KEYBDINPUT()
+            {
+                wScan = @char,
+                dwFlags = Flags.KEYEVENTF_UNICODE
+            };
 
             if (isExtendedKey)
                 keyDownInput.dwFlags |= Flags.KEYEVENTF_EXTENDEDKEY;

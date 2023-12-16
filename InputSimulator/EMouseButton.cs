@@ -8,22 +8,28 @@
         /// <summary>
         /// The left mouse button.
         /// </summary>
-        Left,
+        LeftButton,
         /// <summary>
         /// The right mouse button.
         /// </summary>
-        Right,
+        RightButton,
         /// <summary>
         /// The middle mouse button.
         /// </summary>
-        Middle,
+        MiddleButton,
         /// <summary>
         /// The first extension button.
         /// </summary>
-        X1,
+        /// <remarks>
+        /// XButton1 is usually the "back" button, closer to the thumb. Not all mice have XButtons.
+        /// </remarks>
+        XButton1,
         /// <summary>
         /// The second extension button.
         /// </summary>
-        X2,
+        /// <remarks>
+        /// XButton2 is usually the "forward" button, further from the thumb. Not all mice have XButtons.
+        /// </remarks>
+        XButton2,
     }
 }

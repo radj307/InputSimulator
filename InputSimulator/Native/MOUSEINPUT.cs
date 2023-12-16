@@ -5,10 +5,10 @@ using System.Runtime.InteropServices;
 namespace InputSimulator.Native
 {
     /// <summary>
-    /// Contains information about a simulated mouse event.
+    /// Defines a simulated mouse input event.
     /// </summary>
     /// <remarks>
-    /// The full documentation is available on MSDN: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-mouseinput"/>
+    /// MSDN Documentation: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-mouseinput"/>
     /// </remarks>
     [StructLayout(LayoutKind.Sequential)]
     [DebuggerDisplay("({dx}, {dy}), {dwFlags}, Data: {mouseData}")]

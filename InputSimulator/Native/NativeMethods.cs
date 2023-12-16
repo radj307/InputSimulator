@@ -38,11 +38,11 @@ namespace InputSimulator.Native
         /// Gets the last error to have occurred in the Win32 API.
         /// </summary>
         /// <returns>A <see cref="Win32Exception"/> object representing the last error if there is one; otherwise, <see langword="null"/>.</returns>
-        public static Win32Exception GetLastWin32Error()
+        public static Win32Exception? GetLastWin32Error()
         {
             var hr = Marshal.GetLastWin32Error();
 
-            if (hr == 0) return null!;
+            if (hr == 0) return null;
 
             _ = FormatMessage(
                 FORMAT_MESSAGE.ALLOCATE_BUFFER | FORMAT_MESSAGE.FROM_SYSTEM | FORMAT_MESSAGE.IGNORE_INSERTS,
@@ -64,56 +64,40 @@ namespace InputSimulator.Native
         /// </remarks>
         [DllImport("user32.dll", SetLastError = true)]
         private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+        /// <summary>
+        /// The size of an <see cref="INPUT"/> structure, in bytes.
+        /// </summary>
+        private static readonly int SizeOfINPUT = Marshal.SizeOf(typeof(INPUT));
         #endregion SendInput (P/Invoke)
 
-        #region SendInput
+        #region SendInputs
         /// <summary>
-        /// Synthesizes keystrokes, mouse motions, and button clicks.
+        /// Synthesizes any number of keyboard, mouse, and/or hardware input events defined by the specified <paramref name="inputs"/>.
         /// </summary>
         /// <remarks>
-        /// See the full documentation on MSDN: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput"/>.
-        /// <br/><br/>
-        /// <b>Warning:</b> This function fails when it is blocked by UIPI.
-        /// Note that neither GetLastError nor the return value will indicate the failure was caused by UIPI blocking.<br/>
-        /// See here for more information on UIPI: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-changewindowmessagefilter#remarks"/>.
+        /// Use <see cref="GetLastWin32Error"/> to get extended error information.
+        /// <br/>
+        /// See the <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput">MSDN documentation</see> for more information.
         /// </remarks>
-        /// <param name="inputs">Any number of <see cref="INPUT"/> structures representing individual events to be inserted into the keyboard or mouse input streams.</param>
-        /// <returns>The number of successful events.</returns>
+        /// <param name="inputs">Any number of <see cref="INPUT"/> structures to send as input, in the order that they will be sent.</param>
+        /// <returns>The number of <paramref name="inputs"/> that were successfully sent.</returns>
         public static uint SendInputs(params INPUT[] inputs)
-            => SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+        {
+            return SendInput((uint)inputs.Length, inputs, SizeOfINPUT);
+        }
         /// <inheritdoc cref="SendInputs(INPUT[])"/>
-        public static uint SendInputs(IEnumerable<INPUT> inputs)
-            => SendInputs(inputs.ToArray());
-        /// <param name="input">An <see cref="INPUT"/> structure representing the event to be inserted into the keyboard or mouse input stream.</param>
-        /// <inheritdoc cref="SendInputs(INPUT[])"/>
-        public static bool SendInput(INPUT input)
-            => 1u == SendInput(1u, new[] { input }, Marshal.SizeOf(typeof(INPUT)));
-        /// <remarks>
-        /// The only difference between this method and <see cref="SendInputs(INPUT[])"/> is that this method returns a <see cref="bool"/>.
-        /// <br/><br/>
-        /// See the full documentation on MSDN: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput"/>.
-        /// <br/><br/>
-        /// <b>Warning:</b> This function fails when it is blocked by UIPI.
-        /// Note that neither GetLastError nor the return value will indicate the failure was caused by UIPI blocking.<br/>
-        /// See here for more information on UIPI: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-changewindowmessagefilter#remarks"/>.
-        /// </remarks>
-        /// <returns><see langword="true"/> when all of the specified <paramref name="inputs"/> were sent successfully; otherwise, <see langword="false"/> when at least one input failed.</returns>
+        public static uint SendInputs(IEnumerable<INPUT> inputs) => SendInputs(inputs.ToArray());
+        #endregion SendInputs
+
+        #region SendInput
+        /// <returns><see langword="true"/> when all of the <paramref name="inputs"/> were sent successfully; otherwise, <see langword="false"/>.</returns>
         /// <inheritdoc cref="SendInputs(INPUT[])"/>
         public static bool SendInput(params INPUT[] inputs)
-            => inputs.Length == SendInputs(inputs);
-        /// <remarks>
-        /// The only difference between this method and <see cref="SendInputs(IEnumerable{INPUT})"/> is that this method returns a <see cref="bool"/>.
-        /// <br/><br/>
-        /// See the full documentation on MSDN: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput"/>.
-        /// <br/><br/>
-        /// <b>Warning:</b> This function fails when it is blocked by UIPI.
-        /// Note that neither GetLastError nor the return value will indicate the failure was caused by UIPI blocking.<br/>
-        /// See here for more information on UIPI: <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-changewindowmessagefilter#remarks"/>.
-        /// </remarks>
-        /// <returns><see langword="true"/> when all of the specified <paramref name="inputs"/> were sent successfully; otherwise, <see langword="false"/> when at least one input failed.</returns>
-        /// <inheritdoc cref="SendInputs(INPUT[])"/>
-        public static bool SendInput(IEnumerable<INPUT> inputs)
-            => SendInput(inputs.ToArray());
+        {
+            return inputs.Length == SendInputs(inputs);
+        }
+        /// <inheritdoc cref="SendInput(INPUT[])"/>
+        public static bool SendInput(IEnumerable<INPUT> inputs) => SendInput(inputs.ToArray());
         #endregion SendInput
 
         #region GetMonitorInfo (P/Invoke)
@@ -123,8 +107,17 @@ namespace InputSimulator.Native
         #endregion GetMonitorInfo (P/Invoke)
 
         #region GetMonitorInfo
+        /// <summary>
+        /// Gets the <see cref="MONITORINFO"/> structure for the monitor with the specified <paramref name="hMonitor"/> handle.
+        /// </summary>
+        /// <param name="hMonitor">The handle of the monitor to get the information of.</param>
+        /// <returns><see cref="MONITORINFO"/> structure that contains the monitor dimensions.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="hMonitor"/> was <see cref="IntPtr.Zero"/>.</exception>
         public static MONITORINFO GetMonitorInfo(IntPtr hMonitor)
         {
+            if (hMonitor == IntPtr.Zero)
+                throw new ArgumentNullException(nameof(hMonitor));
+
             MONITORINFO monitorInfo = new();
             GetMonitorInfo(hMonitor, ref monitorInfo);
             return monitorInfo;
@@ -250,7 +243,7 @@ namespace InputSimulator.Native
             /// </summary>
             SM_CYVIRTUALSCREEN = 79,
         }
-        [DllImport("user32.dll", SetLastError = true)]
+        [DllImport("user32.dll")]
         static extern int GetSystemMetricsForDpi(SystemMetric nIndex, uint dpi);
         #endregion GetSystemMetricsForDpi (P/Invoke)
 
@@ -260,6 +253,10 @@ namespace InputSimulator.Native
         #endregion GetDpiForSystem (P/Invoke)
 
         #region GetSystemDpi
+        /// <summary>
+        /// Gets the current system DPI.
+        /// </summary>
+        /// <returns>The system DPI as a <see cref="uint"/>.</returns>
         public static uint GetSystemDpi() => GetDpiForSystem();
         #endregion GetSystemDpi
 
@@ -352,7 +349,19 @@ namespace InputSimulator.Native
         #endregion IsIconic (P/Invoke)
 
         #region IsWindowMinimized
-        public static bool IsWindowMinimized(IntPtr hWnd) => IsIconic(hWnd);
+        /// <summary>
+        /// Checks if the window with the specified <paramref name="hWnd"/> is minimized or not.
+        /// </summary>
+        /// <param name="hWnd">The handle of the window to check.</param>
+        /// <returns><see langword="true"/> when the window is minimized; otherwise, <see langword="false"/>.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="hWnd"/> was <see cref="IntPtr.Zero"/>.</exception>
+        public static bool IsWindowMinimized(IntPtr hWnd)
+        {
+            if (hWnd == IntPtr.Zero)
+                throw new ArgumentNullException(nameof(hWnd));
+
+            return IsIconic(hWnd);
+        }
         #endregion IsWindowMinimized
 
         #region GetWindowRect (P/Invoke)
@@ -369,41 +378,95 @@ namespace InputSimulator.Native
         /// Gets the dimensions of the window with the specified <paramref name="hWnd"/>.
         /// </summary>
         /// <remarks>
-        /// This function fails when the window is minimized.
+        /// Window dimensions cannot be retrieved when the window is minimized, and <b>will</b> contain garbage data instead of the expected values when <paramref name="checkIfWindowIsMinimized"/> is <see langword="false"/>.
+        /// When <paramref name="checkIfWindowIsMinimized"/> is <see langword="true"/> and the window <i>is</i> minimized, a <see langword="default"/> (zeroed) <see cref="RECT"/> structure is returned instead of trying to retrieve garbage data.
+        /// (This is unnecessary if the calling code has already ensured that the window isn't minimized.)
         /// </remarks>
         /// <param name="hWnd">The handle of the target window.</param>
-        /// <returns>The window's dimensions as a <see cref="RECT"/> structure when successful; otherwise, a default (zeroed) <see cref="RECT"/> structure.</returns>
-        /// <exception cref="ArgumentNullException"></exception>
-        public static RECT GetWindowRect(IntPtr hWnd)
+        /// <param name="checkIfWindowIsMinimized">When <see langword="true"/>, checks if the window is minimized before attempting to get its dimensions to prevent returning garbage data.<br/>When <see langword="false"/>, this check is skipped. Use <see langword="false"/> when the calling code has already ensured that the window is not minimized.<br/><br/>To check if a window is minimized, use <see cref="IsWindowMinimized(IntPtr)"/>.</param>
+        /// <returns>The window's dimensions as a <see cref="RECT"/> structure.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="hWnd"/> was <see cref="IntPtr.Zero"/>.</exception>
+        /// <exception cref="Win32Exception">The <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowrect">GetWindowRect</see> function failed.</exception>
+        public static RECT GetWindowRect(IntPtr hWnd, bool checkIfWindowIsMinimized = true)
         {
             if (hWnd == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(hWnd));
 
-            if (IsWindowMinimized(hWnd)) return default;
+            // check if the window is minimized
+            if (checkIfWindowIsMinimized && IsWindowMinimized(hWnd))
+                return default;
 
-            GetWindowRect(hWnd, out var rect);
+            // get the window rect
+            if (!GetWindowRect(hWnd, out var rect) && GetLastWin32Error() is Win32Exception lastError)
+                throw lastError;
             return rect;
         }
         #endregion GetWindowRect
 
+        #region TryGetWindowRect
+        /// <summary>
+        /// Attempts to get the dimensions of the window with the specified <paramref name="hWnd"/>.
+        /// </summary>
+        /// <remarks>
+        /// Window dimensions cannot be retrieved when the window is minimized, and <b>will</b> contain garbage data instead of the expected values when <paramref name="checkIfWindowIsMinimized"/> is <see langword="false"/>.
+        /// When <paramref name="checkIfWindowIsMinimized"/> is <see langword="true"/> and the window <i>is</i> minimized, a <see langword="default"/> (zeroed) <see cref="RECT"/> structure is returned instead of trying to retrieve garbage data.
+        /// (This is unnecessary if the calling code has already ensured that the window isn't minimized.)
+        /// </remarks>
+        /// <param name="hWnd">The handle of the target window.</param>
+        /// <param name="checkIfWindowIsMinimized">When <see langword="true"/>, checks if the window is minimized before attempting to get its dimensions to prevent returning garbage data.<br/>When <see langword="false"/>, this check is skipped. Use <see langword="false"/> when the calling code has already ensured that the window is not minimized.<br/>To check if a window is minimized, use <see cref="IsWindowMinimized(IntPtr)"/>.</param>
+        /// <param name="windowRect">The window's dimensions as a <see cref="RECT"/> structure when successful; otherwise, </param>
+        /// <returns><see langword="true"/> when the <paramref name="windowRect"/> was retrieved successfully and is not zeroed; otherwise, <see langword="false"/>.</returns>
+        public static bool TryGetWindowRect(IntPtr hWnd, bool checkIfWindowIsMinimized, out RECT windowRect)
+        {
+            try
+            {
+                windowRect = GetWindowRect(hWnd, checkIfWindowIsMinimized);
+                return !windowRect.IsZeroed;
+            }
+            catch
+            {
+                windowRect = default;
+                return false;
+            }
+        }
+        /// <returns><see langword="true"/> when the window is not minimized and the <paramref name="windowRect"/> was retrieved successfully; otherwise, <see langword="false"/>.</returns>
+        /// <inheritdoc cref="TryGetWindowRect(IntPtr, bool, out RECT)"/>
+        public static bool TryGetWindowRect(IntPtr hWnd, out RECT windowRect) => TryGetWindowRect(hWnd, checkIfWindowIsMinimized: true, out windowRect);
+        #endregion TryGetWindowRect
+
         #region GetClientRect (P/Invoke)
+        /// <remarks>
+        /// <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getclientrect"/>
+        /// </remarks>
         [DllImport("User32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
         #endregion GetClientRect (P/Invoke)
 
         #region GetWindowClientRect
+        /// <summary>
+        /// Gets the client area of the window with the specified <paramref name="hWnd"/>.
+        /// </summary>
+        /// <remarks>
+        /// The client area is relative to the top-left corner of the window, so <see cref="RECT.left"/> &amp; <see cref="RECT.top"/> are always zero.
+        /// </remarks>
+        /// <param name="hWnd">The handle of a window to get the client area of.</param>
+        /// <returns>The client area of the specified window as a <see cref="RECT"/> structure.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="hWnd"/> was <see cref="IntPtr.Zero"/>.</exception>
+        /// <exception cref="Win32Exception">The <see href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getclientrect">GetClientRect</see> function failed.</exception>
         public static RECT GetWindowClientRect(IntPtr hWnd)
         {
             if (hWnd == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(hWnd));
-            GetClientRect(hWnd, out var rect);
+
+            if (!GetClientRect(hWnd, out var rect) && GetLastWin32Error() is Win32Exception lastError)
+                throw lastError;
             return rect;
         }
         #endregion GetWindowClientRect
 
         #region GetCursorPos (P/Invoke)
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool GetCursorPos(out POINT lpPoint);
         #endregion GetCursorPos (P/Invoke)
@@ -411,11 +474,68 @@ namespace InputSimulator.Native
         #region GetCursorPos
         public static POINT GetCursorPos()
         {
-            GetCursorPos(out POINT lpPoint);
+            if (!GetCursorPos(out POINT lpPoint) && GetLastWin32Error() is Win32Exception lastError)
+                throw lastError;
             return lpPoint;
         }
         public static POINT GetCursorPosAbs()
             => InputHelper.ToAbsCoordinates(GetCursorPos());
         #endregion GetCursorPos
+
+        #region GetKeyState (P/Invoke)
+        [DllImport("User32.dll", EntryPoint = "GetKeyState")]
+        private static extern ushort GetKeyState_Native(EVirtualKeyCode nVirtKey);
+        #endregion GetKeyState (P/Invoke)
+
+        #region GetKeyState
+        /// <summary>
+        /// Checks the state of the specified <paramref name="virtualKeyCode"/>.
+        /// </summary>
+        /// <param name="virtualKeyCode">The virtual key code of the key to get the state of.</param>
+        /// <returns>The specified key's state as an <see cref="EKeyStates"/>.</returns>
+        public static EKeyStates GetKeyState(EVirtualKeyCode virtualKeyCode)
+        {
+            var state = GetKeyState_Native(virtualKeyCode);
+
+            bool isDown = (state & 0x8000) != 0; //< check the most significant bit
+            bool isToggled = (state & 0x0001) != 0; //< check the least significant bit
+
+            if (isDown && isToggled)
+                return EKeyStates.Down | EKeyStates.Toggled;
+            else if (isDown)
+                return EKeyStates.Down;
+            else if (isToggled)
+                return EKeyStates.Toggled;
+            else
+                return EKeyStates.Up;
+        }
+        #endregion GetKeyState
+
+        #region MapVirtualKey (P/Invoke)
+        [DllImport("User32.dll", CharSet = CharSet.Unicode)]
+        private static extern uint MapVirtualKey(uint uCode, uint uMapType);
+        private const uint MAPVK_VK_TO_VSC = 0;
+        private const uint MAPVK_VSC_TO_VK = 1;
+        #endregion MapVirtualKey (P/Invoke)
+
+        #region VirtualKeyCodeToScanCode
+        /// <summary>
+        /// Converts the specified <paramref name="virtualKeyCode"/> to the equivalent scan code.
+        /// </summary>
+        /// <param name="virtualKeyCode">A virtual key code to convert.</param>
+        /// <returns>The scan code of the key represented by the <paramref name="virtualKeyCode"/>.</returns>
+        public static ushort VirtualKeyCodeToScanCode(EVirtualKeyCode virtualKeyCode)
+            => unchecked((ushort)MapVirtualKey((uint)virtualKeyCode, MAPVK_VK_TO_VSC));
+        #endregion VirtualKeyCodeToScanCode
+
+        #region ScanCodeToVirtualKeyCode
+        /// <summary>
+        /// Converts the specified <paramref name="scanCode"/> to the equivalent <see cref="EVirtualKeyCode"/>.
+        /// </summary>
+        /// <param name="scanCode">A scan code to convert.</param>
+        /// <returns>The <see cref="EVirtualKeyCode"/> of the key with the specified <paramref name="scanCode"/>.</returns>
+        public static EVirtualKeyCode ScanCodeToVirtualKeyCode(ushort scanCode)
+            => unchecked((EVirtualKeyCode)MapVirtualKey(scanCode, MAPVK_VSC_TO_VK));
+        #endregion ScanCodeToVirtualKeyCode
     }
 }

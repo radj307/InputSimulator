@@ -9,7 +9,7 @@ using System.Linq;
 namespace InputSimulator
 {
     /// <summary>
-    /// Helper methods for performing conversions and creating sequences of <see cref="INPUT"/> events.
+    /// Helper methods for performing conversions and creating <see cref="INPUT"/> events.
     /// </summary>
     public static class InputHelper
     {
@@ -31,34 +31,160 @@ namespace InputSimulator
             => (int)Math.Truncate(Normalize(value, oldRange, newRange));
         #endregion Normalize
 
-        #region ExpandInputs
-        public static INPUT[] ExpandInputs(params SingleOrEnumerable<INPUT>[] inputs)
-            => inputs.SelectMany(item => item).ToArray();
-
-        #region (Class) SingleOrEnumerable<T>
-        public class SingleOrEnumerable<T> : IEnumerable<T>
+        #region (Class) InstanceOrArray<T>
+        /// <summary>
+        /// Variant helper class for the <see cref="Expand{T}(InstanceOrArray{T}[])"/> method that accepts <typeparamref name="T"/> instances or arrays.
+        /// </summary>
+        /// <remarks>
+        /// Implicitly convertible from the following types:
+        /// <list type="bullet">
+        /// <item><typeparamref name="T"/></item>
+        /// <item><typeparamref name="T"/>[]</item>
+        /// <item><see cref="System.Collections.ObjectModel.Collection{T}"/> (where T is <typeparamref name="T"/>)</item>
+        /// <item><see cref="List{T}"/> (where T is <typeparamref name="T"/>)</item>
+        /// <item><see cref="Queue{T}"/> (where T is <typeparamref name="T"/>)</item>
+        /// <item><see cref="Stack{T}"/> (where T is <typeparamref name="T"/>)</item>
+        /// </list>
+        /// </remarks>
+        /// <typeparam name="T">The type of item being processed.</typeparam>
+        public class InstanceOrArray<T> : IEnumerable<T>
         {
-            public SingleOrEnumerable(params T[] items)
-            {
-                _items = items;
-            }
+            #region Constructor
+            internal InstanceOrArray(params T[] items) => _items = items;
+            #endregion Constructor
 
+            #region Fields
             private readonly T[] _items;
+            #endregion Fields
 
-            public int Length => _items.Length;
+            #region Conversion Operators
+            public static implicit operator InstanceOrArray<T>(T item) => new(item);
+            public static implicit operator InstanceOrArray<T>(T[] items) => new(items);
+            // various collection types since conversion operators can't use interfaces
+            public static implicit operator InstanceOrArray<T>(System.Collections.ObjectModel.Collection<T> items) => new(items.ToArray());
+            public static implicit operator InstanceOrArray<T>(List<T> items) => new(items.ToArray());
+            public static implicit operator InstanceOrArray<T>(Queue<T> items) => new(items.ToArray());
+            public static implicit operator InstanceOrArray<T>(Stack<T> items) => new(items.ToArray());
+            public static implicit operator T[](InstanceOrArray<T> instance) => instance._items;
+            #endregion Conversion Operators
 
-            public static implicit operator SingleOrEnumerable<T>(T item) => new(item);
-            public static implicit operator SingleOrEnumerable<T>(T[] items) => new(items);
-            public static implicit operator T[](SingleOrEnumerable<T> instance) => instance._items;
-
+            #region IEnumerable<T>
             public IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)_items).GetEnumerator();
             IEnumerator IEnumerable.GetEnumerator() => _items.GetEnumerator();
+            #endregion IEnumerable<T>
         }
-        #endregion (Class) SingleOrEnumerable<T>
+        #endregion (Class) InstanceOrArray<T>
 
-        #endregion ExpandInputs
+        #region MakeArray
+        /// <summary>
+        /// Expands any arrays in the specified <paramref name="source"/> items into a contiguous sequence without disrupting the order.
+        /// </summary>
+        /// <remarks>
+        /// You can use this to combine the outputs of many <c>Build</c>... methods that return <see cref="INPUT"/> instances or arrays.<br/>
+        /// It works in a similar manner to <c>SelectMany</c>, except that it also accepts individual items in addition to enumerables.
+        /// </remarks>
+        /// <param name="source">Any number of items of type <typeparamref name="T"/> and/or <see cref="IEnumerable{T}"/> sequences of type <typeparamref name="T"/>.</param>
+        /// <returns>A contiguous sequence of <typeparamref name="T"/> items in the same order as the <paramref name="source"/>.</returns>
+        public static IEnumerable<INPUT> MakeEnumerable(params InstanceOrArray<INPUT>[] source) => source.SelectMany(item => item);
+        public static INPUT[] MakeArray(params InstanceOrArray<INPUT>[] source) => MakeEnumerable(source).ToArray();
+        #endregion MakeArray
 
         #region Keyboard
+
+        #region BuildKeyState
+        /// <summary>
+        /// Creates an <see cref="INPUT"/> structure that represents an injected key event.
+        /// </summary>
+        /// <param name="keyCode">The key code of the key to set the state of.</param>
+        /// <param name="scanCode">The scan code associated with the specified <paramref name="keyCode"/>.</param>
+        /// <param name="state">The state to set the key to in the injected input event.</param>
+        /// <returns><see cref="INPUT"/> structure that sets the specified key to the specified state.</returns>
+        /// <exception cref="InvalidEnumArgumentException">The specified <paramref name="state"/> isn't a valid <see cref="EKeyState"/> value.</exception>
+        public static INPUT BuildKeyState(EVirtualKeyCode keyCode, ushort scanCode, EKeyState state)
+        {
+#pragma warning disable IDE0066 // Convert switch statement to expression
+            switch (state)
+#pragma warning restore IDE0066 // Convert switch statement to expression
+            {
+            case EKeyState.Down:
+                return BuildKeyDown(keyCode, scanCode);
+            case EKeyState.Up:
+                return BuildKeyUp(keyCode, scanCode);
+            default:
+                throw new InvalidEnumArgumentException(nameof(state), (int)state, typeof(EKeyState));
+            }
+        }
+        /// <inheritdoc cref="BuildKeyState(EVirtualKeyCode, ushort, EKeyState)"/>
+        public static INPUT BuildKeyState(EVirtualKeyCode keyCode, EKeyState state)
+            => BuildKeyState(keyCode, NativeMethods.VirtualKeyCodeToScanCode(keyCode), state);
+        #endregion BuildKeyState
+
+        #region BuildKeyDown
+        public static INPUT BuildKeyDown(EVirtualKeyCode keyCode, ushort scanCode)
+        {
+            return new INPUT(KEYBDINPUT.GetKeyDown(keyCode, scanCode));
+        }
+        public static INPUT BuildKeyDown(EVirtualKeyCode keyCode)
+        {
+            return new INPUT(KEYBDINPUT.GetKeyDown(keyCode));
+        }
+        #endregion BuildKeyDown
+
+        #region BuildKeysDown
+        public static INPUT[] BuildKeysDown(EVirtualKeyCode[] keys)
+        {
+            var keysLength = keys.Length;
+            var inputs = new INPUT[keysLength];
+
+            for (int i = 0; i < keysLength; ++i)
+            {
+                inputs[i] = BuildKeyDown(keys[i]);
+            }
+
+            return inputs.ToArray();
+        }
+        #endregion BuildKeysDown
+
+        #region BuildKeyUp
+        public static INPUT BuildKeyUp(EVirtualKeyCode keyCode, ushort scanCode)
+        {
+            return new INPUT(KEYBDINPUT.GetKeyUp(keyCode, scanCode));
+        }
+        public static INPUT BuildKeyUp(EVirtualKeyCode keyCode)
+        {
+            return new INPUT(KEYBDINPUT.GetKeyUp(keyCode));
+        }
+        #endregion BuildKeyUp
+
+        #region BuildKeysUp
+        public static INPUT[] BuildKeysUp(EVirtualKeyCode[] keys)
+        {
+            var keysLength = keys.Length;
+            var inputs = new INPUT[keysLength];
+
+            for (int i = 0; i < keysLength; ++i)
+            {
+                inputs[i] = BuildKeyUp(keys[i]);
+            }
+
+            return inputs.ToArray();
+        }
+        #endregion BuildKeysUp
+
+        #region BuildKeyPress
+        public static INPUT[] BuildKeyPress(EVirtualKeyCode keyCode, ushort scanCode)
+            => new[]
+            {
+                BuildKeyDown(keyCode, scanCode),
+                BuildKeyUp(keyCode, scanCode)
+            };
+        public static INPUT[] BuildKeyPress(EVirtualKeyCode keyCode)
+            => new[]
+            {
+                BuildKeyDown(keyCode),
+                BuildKeyUp(keyCode)
+            };
+        #endregion BuildKeyPress
 
         #region BuildKeyStrokeDown
         public static INPUT[] BuildKeyStrokeDown(EVirtualKeyCode[] modifierKeys, EVirtualKeyCode[] keys)
@@ -66,17 +192,16 @@ namespace InputSimulator
             var inputs = new INPUT[modifierKeys.Length + keys.Length];
             int i_inputs = 0;
 
-            foreach (var modifier in modifierKeys)
+            foreach (var modifierKey in modifierKeys)
             {
-                inputs[i_inputs++] = new(KEYBDINPUT.GetKeyDown(modifier));
+                inputs[i_inputs++] = BuildKeyDown(modifierKey);
             }
-
             foreach (var key in keys)
             {
-                inputs[i_inputs++] = new(KEYBDINPUT.GetKeyDown(key));
+                inputs[i_inputs++] = BuildKeyDown(key);
             }
 
-            return inputs.ToArray();
+            return inputs;
         }
         #endregion BuildKeyStrokeDown
 
@@ -86,21 +211,32 @@ namespace InputSimulator
             var inputs = new INPUT[modifierKeys.Length + keys.Length];
             int i_inputs = 0;
 
-            foreach (var modifier in modifierKeys)
-            {
-                inputs[i_inputs++] = new(KEYBDINPUT.GetKeyUp(modifier));
-            }
-
             foreach (var key in keys)
             {
-                inputs[i_inputs++] = new(KEYBDINPUT.GetKeyUp(key));
+                inputs[i_inputs++] = BuildKeyUp(key);
+            }
+            foreach (var modifierKey in modifierKeys)
+            {
+                inputs[i_inputs++] = BuildKeyUp(modifierKey);
             }
 
-            return inputs.ToArray();
+            return inputs;
         }
         #endregion BuildKeyStrokeUp
 
         #region BuildKeyStroke
+        /// <summary>
+        /// Creates <see cref="INPUT"/> structures for the specified key stroke.
+        /// </summary>
+        /// <param name="modifierKeys">The <see cref="EVirtualKeyCode"/> values of the modifier keys in the key stroke.</param>
+        /// <param name="keys">The <see cref="EVirtualKeyCode"/> values of the keys in the key stroke.</param>
+        /// <returns>
+        /// An <see cref="INPUT"/> array that contains structures to perform the following steps:<br/>
+        /// 1. All of the <paramref name="modifierKeys"/> are pressed down (▼...).<br/>
+        /// 2. Each of the <paramref name="keys"/> is pressed in sequence. (▼▲...)<br/>
+        /// 2. All of the <paramref name="modifierKeys"/> are all released (▲...).<br/>
+        /// The length of the returned array is equal to 2 times the combined number of <paramref name="modifierKeys"/> &amp; <paramref name="keys"/>.
+        /// </returns>
         public static INPUT[] BuildKeyStroke(EVirtualKeyCode[] modifierKeys, EVirtualKeyCode[] keys)
         {
             var inputs = new INPUT[modifierKeys.Length * 2 + keys.Length * 2];
@@ -110,14 +246,14 @@ namespace InputSimulator
             foreach (var modifier in modifierKeys)
             {
                 inputs[i_inputs++] = new(KEYBDINPUT.GetKeyDown(modifier));
-                inputs[i_modKeyUpInputs++] = new(KEYBDINPUT.GetKeyUp(modifier));
+                inputs[i_modKeyUpInputs++] = BuildKeyUp(modifier);
             }
 
             int i_keyUpInputs = i_inputs + keys.Length;
             foreach (var key in keys)
             {
                 inputs[i_inputs++] = new(KEYBDINPUT.GetKeyDown(key));
-                inputs[i_keyUpInputs++] = new(KEYBDINPUT.GetKeyUp(key));
+                inputs[i_keyUpInputs++] = BuildKeyUp(key);
             }
 
             return inputs.ToArray();
@@ -348,20 +484,20 @@ namespace InputSimulator
             switch (mouseButton)
 #pragma warning restore IDE0066 // Convert switch statement to expression
             {
-            case EMouseButton.Left:
+            case EMouseButton.LeftButton:
                 return buttonDown
                     ? MOUSEINPUT.Flags.MOUSEEVENTF_LEFTDOWN
                     : MOUSEINPUT.Flags.MOUSEEVENTF_LEFTUP;
-            case EMouseButton.Right:
+            case EMouseButton.RightButton:
                 return buttonDown
                     ? MOUSEINPUT.Flags.MOUSEEVENTF_RIGHTDOWN
                     : MOUSEINPUT.Flags.MOUSEEVENTF_RIGHTUP;
-            case EMouseButton.Middle:
+            case EMouseButton.MiddleButton:
                 return buttonDown
                     ? MOUSEINPUT.Flags.MOUSEEVENTF_MIDDLEDOWN
                     : MOUSEINPUT.Flags.MOUSEEVENTF_MIDDLEUP;
-            case EMouseButton.X1:
-            case EMouseButton.X2:
+            case EMouseButton.XButton1:
+            case EMouseButton.XButton2:
                 return buttonDown
                     ? MOUSEINPUT.Flags.MOUSEEVENTF_XDOWN
                     : MOUSEINPUT.Flags.MOUSEEVENTF_XUP;
@@ -380,10 +516,10 @@ namespace InputSimulator
             };
             switch (mouseButton)
             { // special handling for XButtons
-            case EMouseButton.X1:
+            case EMouseButton.XButton1:
                 buttonInput.mouseData = MOUSEINPUT.XBUTTON1;
                 break;
-            case EMouseButton.X2:
+            case EMouseButton.XButton2:
                 buttonInput.mouseData = MOUSEINPUT.XBUTTON2;
                 break;
             }
@@ -400,6 +536,43 @@ namespace InputSimulator
                 BuildMouseButtonDown(mouseButton),
                 BuildMouseButtonUp(mouseButton)
             });
+        }
+        public static INPUT[] BuildMouseButtonClickAt(EMouseButton mouseButton, int x, int y, int clickCount, int restoreToX, int restoreToY, RECT virtualScreenRect)
+        {
+            if (clickCount < 0)
+                throw new ArgumentOutOfRangeException(nameof(clickCount), clickCount, $"{nameof(clickCount)} cannot be negative.");
+            else if (clickCount == 0)
+                return Array.Empty<INPUT>();
+
+            INPUT[] inputSequence = new INPUT[2 + (2 * clickCount)];
+            int i = 0;
+
+            inputSequence[i++] = BuildMouseMoveTo(x, y, virtualScreenRect);
+            foreach (var input in BuildMouseButtonClick(mouseButton, clickCount))
+            {
+                inputSequence[i++] = input;
+            }
+            inputSequence[i++] = BuildMouseMoveTo(restoreToX, restoreToY, virtualScreenRect);
+
+            return inputSequence;
+        }
+        public static INPUT[] BuildMouseButtonClickAt(EMouseButton mouseButton, int x, int y, int clickCount, RECT virtualScreenRect)
+        {
+            if (clickCount < 0)
+                throw new ArgumentOutOfRangeException(nameof(clickCount), clickCount, $"{nameof(clickCount)} cannot be negative.");
+            else if (clickCount == 0)
+                return Array.Empty<INPUT>();
+
+            INPUT[] inputSequence = new INPUT[1 + (2 * clickCount)];
+            int i = 0;
+
+            inputSequence[i++] = BuildMouseMoveTo(x, y, virtualScreenRect);
+            foreach (var input in BuildMouseButtonClick(mouseButton, clickCount))
+            {
+                inputSequence[i++] = input;
+            }
+
+            return inputSequence;
         }
         #endregion BuildMouseButton...
 
@@ -436,6 +609,22 @@ namespace InputSimulator
         }
         #endregion BuildMouseMoveToAbs
 
+        #region BuildMouseVerticalScroll
+        public static INPUT BuildMouseVerticalScroll(int delta)
+        {
+            return new(new MOUSEINPUT()
+            {
+                dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_WHEEL,
+                mouseData = delta
+            });
+        }
+        public static INPUT[] BuildMouseVerticalScroll(int delta, int count)
+        {
+            return new INPUT[count].SetValuesTo(BuildMouseVerticalScroll(delta));
+        }
+        #endregion BuildMouseVerticalScroll
+
+        #region BuildMouseHorizontalScroll
         public static INPUT BuildMouseHorizontalScroll(int horizontalDelta)
         {
             return new(new MOUSEINPUT()
@@ -448,6 +637,7 @@ namespace InputSimulator
         {
             return new INPUT[count].SetValuesTo(BuildMouseHorizontalScroll(horizontalDelta));
         }
+        #endregion BuildMouseHorizontalScroll
 
         #endregion Mouse
     }

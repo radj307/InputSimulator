@@ -3,17 +3,652 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:is="clr-namespace:InputSimulator;assembly=InputSimulator"
     xmlns:local="clr-namespace:Example.WPF"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="MainWindow"
-    Width="800"
-    Height="450"
+    Width="550"
+    Height="300"
     ShowActivated="False"
+    SizeToContent="WidthAndHeight"
     mc:Ignorable="d">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </Window.Resources>
+
     <Grid>
-        <!--    -->
-        <StackPanel Orientation="Horizontal">
-            <!--    -->
-        </StackPanel>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+
+        <!--  SetMousePos  -->
+        <Grid>
+            <Grid.Resources>
+                <Style TargetType="{x:Type TextBox}">
+                    <EventSetter Event="PreviewTextInput" Handler="MouseCoordTextBox_PreviewTextInput" />
+                </Style>
+            </Grid.Resources>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock
+                Margin="2,0"
+                VerticalAlignment="Center"
+                Text="X:" />
+
+            <TextBox x:Name="SetMouseX" Grid.Column="1" />
+            <TextBlock
+                Grid.Column="1"
+                Margin="3,1"
+                Foreground="Gray"
+                IsHitTestVisible="False"
+                Text="1920 / 2"
+                Visibility="{Binding Text.IsEmpty, ElementName=SetMouseX, Converter={StaticResource BoolToVis}}" />
+
+            <TextBlock
+                Grid.Column="2"
+                Margin="2,0"
+                VerticalAlignment="Center"
+                Text="Y:" />
+
+            <TextBox x:Name="SetMouseY" Grid.Column="3" />
+            <TextBlock
+                Grid.Column="3"
+                Margin="3,1"
+                Foreground="Gray"
+                IsHitTestVisible="False"
+                Text="1080 / 2"
+                Visibility="{Binding Text.IsEmpty, ElementName=SetMouseY, Converter={StaticResource BoolToVis}}" />
+
+            <Button
+                x:Name="SetMouse"
+                Grid.Column="4"
+                Margin="1,0"
+                Click="SetMouse_Click"
+                Content="Set Mouse Position" />
+        </Grid>
+
+        <!--  MoveMouse  -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="34" />
+                <ColumnDefinition />
+                <ColumnDefinition Width="34" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Slider
+                x:Name="MoveMouseX"
+                Interval="1"
+                IsSnapToTickEnabled="True"
+                Maximum="150"
+                TickFrequency="1"
+                ToolTip="X"
+                Value="50" />
+            <TextBox
+                Grid.Column="1"
+                PreviewTextInput="MoveMouseAmountTextBox_PreviewTextInput"
+                Text="{Binding Value, ElementName=MoveMouseX}" />
+            <Slider
+                x:Name="MoveMouseY"
+                Grid.Column="2"
+                Interval="1"
+                IsSnapToTickEnabled="True"
+                Maximum="150"
+                TickFrequency="1"
+                ToolTip="Y"
+                Value="50" />
+            <TextBox
+                Grid.Column="3"
+                PreviewTextInput="MoveMouseAmountTextBox_PreviewTextInput"
+                Text="{Binding Value, ElementName=MoveMouseY}" />
+
+            <TextBox Grid.Column="4" PreviewKeyDown="MoveMouse_PreviewKeyDown" />
+            <TextBlock
+                Grid.Column="4"
+                Margin="3,0"
+                VerticalAlignment="Center"
+                Foreground="Gray"
+                IsHitTestVisible="False"
+                Text="Move Mouse" />
+        </Grid>
+
+        <!--  AutoType  -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+
+            <TextBox
+                x:Name="AutoTypeInput"
+                AcceptsReturn="True"
+                AcceptsTab="True" />
+            <TextBlock
+                Margin="3,0"
+                VerticalAlignment="Center"
+                Foreground="Gray"
+                IsHitTestVisible="False"
+                Text="Input..."
+                Visibility="{Binding Text.IsEmpty, ElementName=AutoTypeInput, Converter={StaticResource BoolToVis}}" />
+            <Button
+                Grid.Column="1"
+                Click="AutoTypeButton_Click"
+                Content="AutoType Text" />
+            <TextBox
+                x:Name="AutoTypeOutput"
+                Grid.Column="2"
+                AcceptsReturn="True"
+                AcceptsTab="True" />
+            <TextBlock
+                Grid.Column="2"
+                Margin="3,0"
+                VerticalAlignment="Center"
+                Foreground="Gray"
+                IsHitTestVisible="False"
+                Text="Output"
+                Visibility="{Binding Text.IsEmpty, ElementName=AutoTypeOutput, Converter={StaticResource BoolToVis}}" />
+        </Grid>
+
+        <!--  Virtual Keyboard  -->
+        <Border
+            Grid.Row="3"
+            Margin="5"
+            Padding="1"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            BorderBrush="Black"
+            BorderThickness="0.5">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition />
+                </Grid.RowDefinitions>
+
+                <TextBox
+                    x:Name="KeyboardOutput"
+                    Margin="1"
+                    AcceptsReturn="True"
+                    AcceptsTab="True" />
+                <TextBlock
+                    Margin="4,0"
+                    VerticalAlignment="Center"
+                    Foreground="Gray"
+                    IsHitTestVisible="False"
+                    Text="Focus is sent here when clicking a key"
+                    Visibility="{Binding Text.IsEmpty, ElementName=KeyboardOutput, Converter={StaticResource BoolToVis}}" />
+
+                <Grid Grid.Row="1" HorizontalAlignment="Center">
+                    <Grid.Resources>
+                        <!--  button styles  -->
+                        <Style x:Key="ButtonStyle" TargetType="{x:Type Button}">
+                            <Setter Property="Margin" Value="1" />
+                            <Setter Property="Foreground" Value="Black" />
+
+                            <!--  Key events  -->
+                            <EventSetter Event="Click" Handler="KeyButton_Click" />
+                        </Style>
+                        <Style BasedOn="{StaticResource ButtonStyle}" TargetType="{x:Type Button}">
+                            <Setter Property="MinWidth" Value="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" />
+                        </Style>
+                        <!--  ToggleButtonStyles  -->
+                        <Style x:Key="ToggleButtonStyle" TargetType="{x:Type ToggleButton}">
+                            <Setter Property="Margin" Value="1" />
+                            <Setter Property="Foreground" Value="Black" />
+                            <Setter Property="MinWidth" Value="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" />
+                        </Style>
+                        <Style BasedOn="{StaticResource ToggleButtonStyle}" TargetType="{x:Type ToggleButton}">
+                            <!--  Toggle Button Events  -->
+                            <EventSetter Event="Checked" Handler="KeyToggleButton_Checked" />
+                            <EventSetter Event="Unchecked" Handler="KeyToggleButton_Unchecked" />
+                        </Style>
+                        <Style
+                            x:Key="LockKeyToggleButtonStyle"
+                            BasedOn="{StaticResource ToggleButtonStyle}"
+                            TargetType="{x:Type ToggleButton}">
+                            <!--  ScrollLock/Numlock/Capslock toggle button events  -->
+                            <EventSetter Event="Loaded" Handler="LockKeyToggleButton_Loaded" />
+                            <EventSetter Event="Checked" Handler="LockKeyToggleButton_Checked" />
+                            <EventSetter Event="Unchecked" Handler="LockKeyToggleButton_Unchecked" />
+                        </Style>
+                        <!--  Path style  -->
+                        <Style TargetType="{x:Type Path}">
+                            <Setter Property="Stroke" Value="Black" />
+                            <Setter Property="StrokeThickness" Value="0.8" />
+                        </Style>
+                    </Grid.Resources>
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition />
+                        <RowDefinition Height="5" />
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="5" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="5" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!--  row 0 (f-keys)  -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+
+                        <Button
+                            Content="ESC"
+                            FontSize="9"
+                            Tag="{x:Static is:EVirtualKeyCode.Escape}" />
+
+                        <Button
+                            Grid.Column="2"
+                            Content="F1"
+                            Tag="{x:Static is:EVirtualKeyCode.F1}" />
+                        <Button
+                            Grid.Column="3"
+                            Content="F2"
+                            Tag="{x:Static is:EVirtualKeyCode.F2}" />
+                        <Button
+                            Grid.Column="4"
+                            Content="F3"
+                            Tag="{x:Static is:EVirtualKeyCode.F3}" />
+                        <Button
+                            Grid.Column="5"
+                            Content="F4"
+                            Tag="{x:Static is:EVirtualKeyCode.F4}" />
+
+                        <Button
+                            Grid.Column="7"
+                            Content="F5"
+                            Tag="{x:Static is:EVirtualKeyCode.F5}" />
+                        <Button
+                            Grid.Column="8"
+                            Content="F6"
+                            Tag="{x:Static is:EVirtualKeyCode.F6}" />
+                        <Button
+                            Grid.Column="9"
+                            Content="F7"
+                            Tag="{x:Static is:EVirtualKeyCode.F7}" />
+                        <Button
+                            Grid.Column="10"
+                            Content="F8"
+                            Tag="{x:Static is:EVirtualKeyCode.F8}" />
+
+                        <Button
+                            Grid.Column="12"
+                            Content="F9"
+                            Tag="{x:Static is:EVirtualKeyCode.F9}" />
+                        <Button
+                            Grid.Column="13"
+                            Content="F10"
+                            FontSize="10"
+                            Tag="{x:Static is:EVirtualKeyCode.F10}" />
+                        <Button
+                            Grid.Column="14"
+                            Content="F11"
+                            FontSize="10"
+                            Tag="{x:Static is:EVirtualKeyCode.F11}" />
+                        <Button
+                            Grid.Column="15"
+                            Content="F12"
+                            FontSize="10"
+                            Tag="{x:Static is:EVirtualKeyCode.F12}" />
+                    </Grid>
+                    <!--  row 1 (digits)  -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal">
+                        <Button Content="~" Tag="{x:Static is:EVirtualKeyCode.Grave}" />
+                        <Button Content="1" Tag="{x:Static is:EVirtualKeyCode.D1}" />
+                        <Button Content="2" Tag="{x:Static is:EVirtualKeyCode.D2}" />
+                        <Button Content="3" Tag="{x:Static is:EVirtualKeyCode.D3}" />
+                        <Button Content="4" Tag="{x:Static is:EVirtualKeyCode.D4}" />
+                        <Button Content="5" Tag="{x:Static is:EVirtualKeyCode.D5}" />
+                        <Button Content="6" Tag="{x:Static is:EVirtualKeyCode.D6}" />
+                        <Button Content="7" Tag="{x:Static is:EVirtualKeyCode.D7}" />
+                        <Button Content="8" Tag="{x:Static is:EVirtualKeyCode.D8}" />
+                        <Button Content="9" Tag="{x:Static is:EVirtualKeyCode.D9}" />
+                        <Button Content="0" Tag="{x:Static is:EVirtualKeyCode.D0}" />
+                        <Button Content="-" Tag="{x:Static is:EVirtualKeyCode.Dash}" />
+                        <Button Content="=" Tag="{x:Static is:EVirtualKeyCode.Equals}" />
+                        <Button Width="36" Tag="{x:Static is:EVirtualKeyCode.Backspace}">
+                            <Path Data="M 15,5 H 0 M 3,2 l -3,3 l 3,3" />
+                        </Button>
+                    </StackPanel>
+                    <!--  row 2  -->
+                    <StackPanel Grid.Row="3" Orientation="Horizontal">
+                        <Button Width="30" Tag="{x:Static is:EVirtualKeyCode.Tab}">
+                            <Path Data="M 0,5 H 15 M 12,2 l 3,3 l -3,3 M 15.95,1.6 V 8.3" />
+                        </Button>
+                        <Button Content="Q" Tag="{x:Static is:EVirtualKeyCode.Q}" />
+                        <Button Content="W" Tag="{x:Static is:EVirtualKeyCode.W}" />
+                        <Button Content="E" Tag="{x:Static is:EVirtualKeyCode.E}" />
+                        <Button Content="R" Tag="{x:Static is:EVirtualKeyCode.R}" />
+                        <Button Content="T" Tag="{x:Static is:EVirtualKeyCode.T}" />
+                        <Button Content="Y" Tag="{x:Static is:EVirtualKeyCode.Y}" />
+                        <Button Content="U" Tag="{x:Static is:EVirtualKeyCode.U}" />
+                        <Button Content="I" Tag="{x:Static is:EVirtualKeyCode.I}" />
+                        <Button Content="O" Tag="{x:Static is:EVirtualKeyCode.O}" />
+                        <Button Content="P" Tag="{x:Static is:EVirtualKeyCode.P}" />
+                        <Button Content="[" Tag="{x:Static is:EVirtualKeyCode.VK_OEM_4}" />
+                        <Button Content="]" Tag="{x:Static is:EVirtualKeyCode.VK_OEM_6}" />
+                        <Button
+                            x:Name="backslash"
+                            Width="26"
+                            Content="\"
+                            Tag="{x:Static is:EVirtualKeyCode.Backslash}" />
+                    </StackPanel>
+                    <!--  row 3 (home row)  -->
+                    <StackPanel Grid.Row="4" Orientation="Horizontal">
+                        <ToggleButton
+                            Content=" CAPS "
+                            Style="{StaticResource LockKeyToggleButtonStyle}"
+                            Tag="{x:Static is:EVirtualKeyCode.CapsLock}" />
+                        <Button Content="A" Tag="{x:Static is:EVirtualKeyCode.A}" />
+                        <Button Content="S" Tag="{x:Static is:EVirtualKeyCode.S}" />
+                        <Button Content="D" Tag="{x:Static is:EVirtualKeyCode.D}" />
+                        <Button Content="F" Tag="{x:Static is:EVirtualKeyCode.F}" />
+                        <Button Content="G" Tag="{x:Static is:EVirtualKeyCode.G}" />
+                        <Button Content="H" Tag="{x:Static is:EVirtualKeyCode.H}" />
+                        <Button Content="J" Tag="{x:Static is:EVirtualKeyCode.J}" />
+                        <Button Content="K" Tag="{x:Static is:EVirtualKeyCode.K}" />
+                        <Button Content="L" Tag="{x:Static is:EVirtualKeyCode.L}" />
+                        <Button Content=";" Tag="{x:Static is:EVirtualKeyCode.Semicolon}" />
+                        <Button Content="'" Tag="{x:Static is:EVirtualKeyCode.Quote}" />
+                        <Button Width="39" Tag="{x:Static is:EVirtualKeyCode.Enter}">
+                            <Path Data="M 15,0 V 5 H 0 M 3,2 L 0,5 L 3,8" />
+                        </Button>
+                    </StackPanel>
+                    <!--  row 4  -->
+                    <StackPanel Grid.Row="5" Orientation="Horizontal">
+                        <ToggleButton
+                            x:Name="lshift"
+                            Width="48"
+                            Content="SHIFT"
+                            Tag="{x:Static is:EVirtualKeyCode.LeftShift}" />
+                        <Button Content="Z" Tag="{x:Static is:EVirtualKeyCode.Z}" />
+                        <Button Content="X" Tag="{x:Static is:EVirtualKeyCode.X}" />
+                        <Button Content="C" Tag="{x:Static is:EVirtualKeyCode.C}" />
+                        <Button Content="V" Tag="{x:Static is:EVirtualKeyCode.V}" />
+                        <Button Content="B" Tag="{x:Static is:EVirtualKeyCode.B}" />
+                        <Button Content="N" Tag="{x:Static is:EVirtualKeyCode.N}" />
+                        <Button Content="M" Tag="{x:Static is:EVirtualKeyCode.M}" />
+                        <Button Content="," Tag="{x:Static is:EVirtualKeyCode.Comma}" />
+                        <Button Content="." Tag="{x:Static is:EVirtualKeyCode.Period}" />
+                        <Button Content="/" Tag="{x:Static is:EVirtualKeyCode.Slash}" />
+                        <ToggleButton
+                            x:Name="rshift"
+                            Width="51.75"
+                            Content="SHIFT"
+                            Tag="{x:Static is:EVirtualKeyCode.RightShift}" />
+                    </StackPanel>
+                    <!--  row 5 (spacebar)  -->
+                    <StackPanel Grid.Row="6" Orientation="Horizontal">
+                        <ToggleButton Content=" CTRL " Tag="{x:Static is:EVirtualKeyCode.LeftControl}" />
+                        <Button Tag="{x:Static is:EVirtualKeyCode.LeftWindows}">
+                            <Path Data="M 0,0 H 10 V 10 H 0 Z M 5,0 L 5,10 M 0,5 L 10,5" />
+                        </Button>
+                        <ToggleButton Content=" ALT " Tag="{x:Static is:EVirtualKeyCode.LeftAlt}" />
+                        <Button Width="114.35" Tag="{x:Static is:EVirtualKeyCode.Space}" />
+                        <ToggleButton Content=" ALT " Tag="{x:Static is:EVirtualKeyCode.RightAlt}" />
+                        <Button Tag="{x:Static is:EVirtualKeyCode.RightWindows}">
+                            <Path Data="M 0,0 H 10 V 10 H 0 Z M 5,0 L 5,10 M 0,5 L 10,5" />
+                        </Button>
+                        <Button Tag="{x:Static is:EVirtualKeyCode.Apps}">
+                            <Path Data="M 0,0 H 10 V 10 H 0 Z M 2,2.5 H 8 M 2,5 H 8 M 2,7.5 H 8" />
+                        </Button>
+                        <ToggleButton Content=" CTRL " Tag="{x:Static is:EVirtualKeyCode.RightControl}" />
+                    </StackPanel>
+
+                    <!--  PrintScreen/ScrollLock/Pause  -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                        <Button
+                            Content="PrtScn"
+                            FontSize="5"
+                            Tag="{x:Static is:EVirtualKeyCode.PrintScreen}" />
+                        <ToggleButton
+                            Content="ScrlLock"
+                            FontSize="4.4"
+                            Style="{StaticResource LockKeyToggleButtonStyle}"
+                            Tag="{x:Static is:EVirtualKeyCode.ScrollLock}" />
+                        <Button
+                            Content="Pause"
+                            FontSize="6"
+                            Tag="{x:Static is:EVirtualKeyCode.Pause}" />
+                    </StackPanel>
+                    <!--  insert/delete, home/end, pgup/pgdown  -->
+                    <Grid
+                        Grid.Row="2"
+                        Grid.RowSpan="2"
+                        Grid.Column="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition />
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+
+                        <Button
+                            Content="Insert"
+                            FontSize="6"
+                            Tag="{x:Static is:EVirtualKeyCode.Insert}" />
+                        <Button
+                            Grid.Column="1"
+                            Content="Home"
+                            FontSize="5.9"
+                            Tag="{x:Static is:EVirtualKeyCode.Home}" />
+                        <Button
+                            Grid.Column="2"
+                            Content="PgUp"
+                            FontSize="6"
+                            Tag="{x:Static is:EVirtualKeyCode.PageUp}" />
+
+                        <Button
+                            Grid.Row="1"
+                            Content="Delete"
+                            FontSize="5.5"
+                            Tag="{x:Static is:EVirtualKeyCode.Delete}" />
+                        <Button
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Content="End"
+                            FontSize="8"
+                            Tag="{x:Static is:EVirtualKeyCode.End}" />
+                        <Button
+                            Grid.Row="1"
+                            Grid.Column="2"
+                            Content="PgDown"
+                            FontSize="4.3"
+                            Tag="{x:Static is:EVirtualKeyCode.PageDown}" />
+
+                    </Grid>
+                    <!--  Arrow keys  -->
+                    <Grid
+                        Grid.Row="5"
+                        Grid.RowSpan="2"
+                        Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition />
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+
+                        <Button Grid.Column="1" Tag="{x:Static is:EVirtualKeyCode.UpArrow}">
+                            <Path Data="M 0,3 l 3,-3 l 3,3 M 3,0 V 7" />
+                        </Button>
+
+                        <Button Grid.Row="1" Tag="{x:Static is:EVirtualKeyCode.LeftArrow}">
+                            <Path Data="M 3,0 l -3,3 l 3,3 M 0,3 H 7" />
+                        </Button>
+                        <Button
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Tag="{x:Static is:EVirtualKeyCode.DownArrow}">
+                            <Path Data="M 0,3 l 3,3 l 3,-3 M 3,6 V 0" />
+                        </Button>
+                        <Button
+                            Grid.Row="1"
+                            Grid.Column="2"
+                            Tag="{x:Static is:EVirtualKeyCode.RightArrow}">
+                            <Path Data="M 4,0 l 3,3 l -3,3 M 0,3 H 7" />
+                        </Button>
+                    </Grid>
+
+                    <!--  Numpad  -->
+                    <Grid
+                        Grid.Row="2"
+                        Grid.RowSpan="5"
+                        Grid.Column="4">
+                        <Grid.Resources>
+                            <Style
+                                x:Key="VerticalButtonStyle"
+                                BasedOn="{StaticResource ButtonStyle}"
+                                TargetType="{x:Type Button}">
+                                <Setter Property="MinHeight" Value="{Binding ActualWidth, RelativeSource={RelativeSource Self}}" />
+                            </Style>
+                        </Grid.Resources>
+                        <Grid.RowDefinitions>
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+
+                        <ToggleButton
+                            Content="NumLock"
+                            FontSize="3.8"
+                            Style="{StaticResource LockKeyToggleButtonStyle}"
+                            Tag="{x:Static is:EVirtualKeyCode.NumLock}" />
+                        <Button
+                            Grid.Column="1"
+                            Content="/"
+                            Tag="{x:Static is:EVirtualKeyCode.NumpadDivide}" />
+                        <Button
+                            Grid.Column="2"
+                            Content="*"
+                            Tag="{x:Static is:EVirtualKeyCode.NumpadMultiply}" />
+                        <Button
+                            Grid.Column="3"
+                            Content="-"
+                            Tag="{x:Static is:EVirtualKeyCode.NumpadSubtract}" />
+                        <Button
+                            Grid.Row="1"
+                            Grid.RowSpan="2"
+                            Grid.Column="3"
+                            Content="+"
+                            Style="{StaticResource VerticalButtonStyle}"
+                            Tag="{x:Static is:EVirtualKeyCode.NumpadAdd}" />
+                        <Button
+                            Grid.Row="3"
+                            Grid.RowSpan="2"
+                            Grid.Column="3"
+                            Content="Enter"
+                            FontSize="7"
+                            Style="{StaticResource VerticalButtonStyle}"
+                            Tag="{x:Static is:EVirtualKeyCode.Enter}" />
+                        <Button
+                            Grid.Row="4"
+                            Grid.Column="2"
+                            Content="."
+                            Tag="{x:Static is:EVirtualKeyCode.NumpadDecimal}" />
+
+                        <!--  Number keys  -->
+                        <Button
+                            Grid.Row="1"
+                            Content="7"
+                            Tag="{x:Static is:EVirtualKeyCode.Numpad7}" />
+                        <Button
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Content="8"
+                            Tag="{x:Static is:EVirtualKeyCode.Numpad8}" />
+                        <Button
+                            Grid.Row="1"
+                            Grid.Column="2"
+                            Content="9"
+                            Tag="{x:Static is:EVirtualKeyCode.Numpad9}" />
+                        <Button
+                            Grid.Row="2"
+                            Content="4"
+                            Tag="{x:Static is:EVirtualKeyCode.Numpad4}" />
+                        <Button
+                            Grid.Row="2"
+                            Grid.Column="1"
+                            Content="5"
+                            Tag="{x:Static is:EVirtualKeyCode.Numpad5}" />
+                        <Button
+                            Grid.Row="2"
+                            Grid.Column="2"
+                            Content="6"
+                            Tag="{x:Static is:EVirtualKeyCode.Numpad6}" />
+                        <Button
+                            Grid.Row="3"
+                            Content="1"
+                            Tag="{x:Static is:EVirtualKeyCode.Numpad1}" />
+                        <Button
+                            Grid.Row="3"
+                            Grid.Column="1"
+                            Content="2"
+                            Tag="{x:Static is:EVirtualKeyCode.Numpad2}" />
+                        <Button
+                            Grid.Row="3"
+                            Grid.Column="2"
+                            Content="3"
+                            Tag="{x:Static is:EVirtualKeyCode.Numpad2}" />
+                        <Button
+                            Grid.Row="4"
+                            Grid.ColumnSpan="2"
+                            Content="0"
+                            Tag="{x:Static is:EVirtualKeyCode.Numpad0}" />
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Border>
     </Grid>
 </Window>
