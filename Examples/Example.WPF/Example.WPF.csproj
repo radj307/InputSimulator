@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\InputSimulator.Interop\InputSimulator.Interop.csproj" />
     <ProjectReference Include="..\..\InputSimulator\InputSimulator.csproj" />
   </ItemGroup>
 

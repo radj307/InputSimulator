@@ -12,12 +12,20 @@ namespace InputSimulator.Native
     [StructLayout(LayoutKind.Sequential)]
     public struct KEYBDINPUT
     {
+        #region Constructors
+        public KEYBDINPUT() { }
+        public KEYBDINPUT(ushort virtualKeyCode, ushort scanCode, Flags flags)
+        {
+
+        }
+        #endregion Constructors
+
         #region Fields
         /// <summary>
         /// A virtual-key code.
         /// The code must be a value in the range 1 to 254. If the dwFlags member specifies <see cref="Flags.KEYEVENTF_UNICODE"/>, wVk must be 0.
         /// </summary>
-        public EVirtualKeyCode wVk;
+        public ushort wVk;
         /// <summary>
         /// A hardware scan code for the key.
         /// If dwFlags specifies <see cref="Flags.KEYEVENTF_UNICODE"/>, wScan specifies a Unicode character which is to be sent to the foreground application.
@@ -70,18 +78,18 @@ namespace InputSimulator.Native
         public static KEYBDINPUT GetKeyDown(EVirtualKeyCode keyCode, ushort scanCode)
             => new()
             {
-                wVk = keyCode,
+                wVk = (ushort)keyCode,
                 wScan = scanCode
             };
-        public static KEYBDINPUT GetKeyDown(EVirtualKeyCode keyCode) => GetKeyDown(keyCode, NativeMethods.VirtualKeyCodeToScanCode(keyCode));
+        public static KEYBDINPUT GetKeyDown(EVirtualKeyCode keyCode) => GetKeyDown(keyCode, NativeMethods.ScanCodeFromVirtualKeyCode(keyCode));
         public static KEYBDINPUT GetKeyUp(EVirtualKeyCode keyCode, ushort scanCode)
             => new()
             {
-                wVk = keyCode,
+                wVk = (ushort)keyCode,
                 dwFlags = Flags.KEYEVENTF_KEYUP,
                 wScan = scanCode
             };
-        public static KEYBDINPUT GetKeyUp(EVirtualKeyCode keyCode) => GetKeyUp(keyCode, NativeMethods.VirtualKeyCodeToScanCode(keyCode));
+        public static KEYBDINPUT GetKeyUp(EVirtualKeyCode keyCode) => GetKeyUp(keyCode, NativeMethods.ScanCodeFromVirtualKeyCode(keyCode));
         public static KEYBDINPUT GetKeyDown(char @char, bool isExtendedKey)
         {
             var keyDownInput = new KEYBDINPUT()
@@ -95,7 +103,7 @@ namespace InputSimulator.Native
 
             return keyDownInput;
         }
-        public static KEYBDINPUT GetKeyDown(char @char) => GetKeyDown(@char, InputHelper.IsExtendedKeyChar(@char));
+        public static KEYBDINPUT GetKeyDown(char @char) => GetKeyDown(@char, InputHelper.IsExtendedKey(@char));
         public static KEYBDINPUT GetKeyUp(char @char, bool isExtendedKey)
         {
             var keyUpInput = new KEYBDINPUT() { wScan = @char, dwFlags = Flags.KEYEVENTF_UNICODE | Flags.KEYEVENTF_KEYUP };
@@ -105,7 +113,7 @@ namespace InputSimulator.Native
 
             return keyUpInput;
         }
-        public static KEYBDINPUT GetKeyUp(char @char) => GetKeyUp(@char, InputHelper.IsExtendedKeyChar(@char));
+        public static KEYBDINPUT GetKeyUp(char @char) => GetKeyUp(@char, InputHelper.IsExtendedKey(@char));
         #endregion Methods
     }
 }

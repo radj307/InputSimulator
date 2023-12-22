@@ -79,7 +79,7 @@ namespace Example.WPF
             }
 
             // set position
-            MouseInputMethods.SetPosition(x, y);
+            MouseInput.SetPosition(x, y);
         }
         #endregion SetMouse
 
@@ -104,7 +104,7 @@ namespace Example.WPF
                     else if (shift)
                         x *= 4;
 
-                    MouseInputMethods.Move(x, 0);
+                    MouseInput.Move(x, 0);
                     break;
                 }
             case System.Windows.Input.Key.NumPad6:
@@ -121,7 +121,7 @@ namespace Example.WPF
                     else if (shift)
                         x *= 4;
 
-                    MouseInputMethods.Move(x, 0);
+                    MouseInput.Move(x, 0);
                     break;
                 }
             case System.Windows.Input.Key.NumPad8:
@@ -138,7 +138,7 @@ namespace Example.WPF
                     else if (shift)
                         y *= 4;
 
-                    MouseInputMethods.Move(0, y);
+                    MouseInput.Move(0, y);
                     break;
                 }
             case System.Windows.Input.Key.NumPad2:
@@ -155,12 +155,12 @@ namespace Example.WPF
                     else if (shift)
                         y *= 4;
 
-                    MouseInputMethods.Move(0, y);
+                    MouseInput.Move(0, y);
                     break;
                 }
             case System.Windows.Input.Key.NumPad5:
             case System.Windows.Input.Key.Enter:
-                MouseInputMethods.LeftButtonClick();
+                MouseInput.LeftButtonClick();
                 break;
             }
             e.Handled = true;
@@ -182,7 +182,7 @@ namespace Example.WPF
 
             KeyboardOutput.Focus();
 
-            KeyboardInputMethods.KeyPress(vk);
+            KeyboardInput.KeyPress(vk);
         }
         #endregion KeyButton
 
@@ -192,14 +192,14 @@ namespace Example.WPF
             KeyboardOutput.Focus();
 
             var vk = (EVirtualKeyCode)((FrameworkElement)sender).Tag;
-            KeyboardInputMethods.KeyDown(vk);
+            KeyboardInput.KeyDown(vk);
         }
         private void KeyToggleButton_Unchecked(object sender, RoutedEventArgs e)
         { // key up
             KeyboardOutput.Focus();
 
             var vk = (EVirtualKeyCode)((FrameworkElement)sender).Tag;
-            KeyboardInputMethods.KeyUp(vk);
+            KeyboardInput.KeyUp(vk);
         }
         #endregion KeyToggleButton
 
@@ -209,7 +209,7 @@ namespace Example.WPF
             var vk = (EVirtualKeyCode)((FrameworkElement)sender).Tag;
             if (NativeMethods.GetKeyState(vk) == EKeyStates.Up)
             {
-                KeyboardInputMethods.KeyPress(vk);
+                KeyboardInput.KeyPress(vk);
             }
         }
         private void LockKeyToggleButton_Unchecked(object sender, RoutedEventArgs e)
@@ -217,7 +217,7 @@ namespace Example.WPF
             var vk = (EVirtualKeyCode)((FrameworkElement)sender).Tag;
             if (NativeMethods.GetKeyState(vk) == EKeyStates.Toggled)
             {
-                KeyboardInputMethods.KeyPress(vk);
+                KeyboardInput.KeyPress(vk);
             }
         }
         private void LockKeyToggleButton_Loaded(object sender, RoutedEventArgs e)
@@ -238,7 +238,7 @@ namespace Example.WPF
         {
             AutoTypeOutput.Focus();
 
-            KeyboardInputMethods.WriteText(AutoTypeInput.Text);
+            KeyboardInput.FromText(AutoTypeInput.Text);
         }
     }
 }

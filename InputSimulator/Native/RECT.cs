@@ -67,6 +67,14 @@ namespace InputSimulator.Native
             top: rectangle.Top,
             right: rectangle.Right,
             bottom: rectangle.Bottom);
+
+        public void Deconstruct(out int left, out int top, out int right, out int bottom)
+        {
+            left = this.left;
+            top = this.top;
+            right = this.right;
+            bottom = this.bottom;
+        }
         #endregion Methods
 
         #region Conversion Operators

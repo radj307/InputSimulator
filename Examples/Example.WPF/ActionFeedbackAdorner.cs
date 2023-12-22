@@ -98,4 +98,12 @@ namespace Example.WPF
         private void Animation_Completed(object? sender, EventArgs e) => RemoveSelf();
         #endregion EventHandlers
     }
+    public static class PointExt
+    {
+        public static void Deconstruct(this Point wpfPoint, out double x, out double y)
+        {
+            x = wpfPoint.X;
+            y = wpfPoint.Y;
+        }
+    }
 }

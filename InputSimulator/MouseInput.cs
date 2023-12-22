@@ -6,7 +6,7 @@ namespace InputSimulator
     /// <summary>
     /// Provides <see langword="static"/> methods for simulating mouse input.
     /// </summary>
-    public static class MouseInputMethods
+    public static class MouseInput
     {
         #region Constants
         /// <summary>
@@ -57,8 +57,8 @@ namespace InputSimulator
             return NativeMethods.SendInput(new INPUT(new MOUSEINPUT()
             {
                 dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_MOVE | MOUSEINPUT.Flags.MOUSEEVENTF_ABSOLUTE | MOUSEINPUT.Flags.MOUSEEVENTF_VIRTUALDESK,
-                dx = InputHelper.ToAbsCoordinateX(xPosition, virtualScreenRect),
-                dy = InputHelper.ToAbsCoordinateY(yPosition, virtualScreenRect),
+                dx = ScreenCoordinateHelper.ToAbsCoordinateX(xPosition, virtualScreenRect),
+                dy = ScreenCoordinateHelper.ToAbsCoordinateY(yPosition, virtualScreenRect),
             }));
         }
         /// <inheritdoc cref="SetPosition(int, int, RECT)"/>
@@ -89,8 +89,8 @@ namespace InputSimulator
             return NativeMethods.SendInput(new INPUT(new MOUSEINPUT()
             {
                 dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_MOVE | MOUSEINPUT.Flags.MOUSEEVENTF_ABSOLUTE | MOUSEINPUT.Flags.MOUSEEVENTF_VIRTUALDESK,
-                dx = InputHelper.ToAbsCoordinateX(monitor.rcMonitor.left + xPosition, virtualScreenRect),
-                dy = InputHelper.ToAbsCoordinateY(monitor.rcMonitor.top + yPosition, virtualScreenRect),
+                dx = ScreenCoordinateHelper.ToAbsCoordinateX(monitor.rcMonitor.left + xPosition, virtualScreenRect),
+                dy = ScreenCoordinateHelper.ToAbsCoordinateY(monitor.rcMonitor.top + yPosition, virtualScreenRect),
             }));
         }
         /// <inheritdoc cref="SetPosition(MONITORINFO, int, int, RECT)"/>

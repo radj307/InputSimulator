@@ -29,17 +29,17 @@ namespace InputSimulator.Native
         /// Contains event data, the meaning of which depends on the values of the other fields.
         /// </summary>
         /// <remarks>
-        /// If dwFlags contains <see cref="Flags.MOUSEEVENTF_WHEEL"/>, then mouseData specifies the amount of wheel movement.
+        /// If <b>dwFlags</b> contains <see cref="Flags.MOUSEEVENTF_WHEEL"/>, then mouseData specifies the amount of wheel movement.
         /// A positive value indicates that the wheel was rotated forward, away from the user; a negative value indicates that the wheel was rotated backward, toward the user.
         /// One wheel click is defined as <see cref="WHEEL_DELTA"/>, which is 120.
         /// <br/><br/>
-        /// <b>Windows Vista (and up)</b>: If dwFlags contains <see cref="Flags.MOUSEEVENTF_HWHEEL"/>, then dwData specifies the amount of wheel movement.
+        /// <b>Windows Vista (and up)</b>: If <b>dwFlags</b> contains <see cref="Flags.MOUSEEVENTF_HWHEEL"/>, then dwData specifies the amount of wheel movement.
         /// A positive value indicates that the wheel was rotated to the right; a negative value indicates that the wheel was rotated to the left.
         /// One wheel click is defined as <see cref="WHEEL_DELTA"/>, which is 120.
         /// <br/><br/>
-        /// If dwFlags does not contain <see cref="Flags.MOUSEEVENTF_WHEEL"/>, <see cref="Flags.MOUSEEVENTF_XDOWN"/>, or <see cref="Flags.MOUSEEVENTF_XUP"/>, then mouseData should be zero.
+        /// If <b>dwFlags</b> does not contain <see cref="Flags.MOUSEEVENTF_WHEEL"/>, <see cref="Flags.MOUSEEVENTF_XDOWN"/>, or <see cref="Flags.MOUSEEVENTF_XUP"/>, then mouseData should be zero.
         /// <br/><br/>
-        /// If dwFlags contains <see cref="Flags.MOUSEEVENTF_XDOWN"/> or <see cref="Flags.MOUSEEVENTF_XUP"/>, then mouseData specifies which X buttons were pressed or released.
+        /// If <b>dwFlags</b> contains <see cref="Flags.MOUSEEVENTF_XDOWN"/> or <see cref="Flags.MOUSEEVENTF_XUP"/>, then mouseData specifies which X buttons were pressed or released.
         /// This value may be any combination of the following flags:
         /// <list type="table">
         /// <item><term><see cref="XBUTTON1"/></term><description> Set if the first X button is pressed or released.</description></item>

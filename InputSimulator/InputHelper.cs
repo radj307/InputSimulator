@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using static System.Runtime.CompilerServices.RuntimeHelpers;
 
 namespace InputSimulator
 {
@@ -13,27 +14,9 @@ namespace InputSimulator
     /// </summary>
     public static class InputHelper
     {
-        #region Normalize
-        /// <summary>
-        /// Normalizes the specified <paramref name="value"/> from the specified <paramref name="oldRange"/> to the specified <paramref name="newRange"/>.
-        /// </summary>
-        /// <param name="value">A value within the specified <paramref name="oldRange"/> to normalize to the <paramref name="newRange"/>.</param>
-        /// <param name="oldRange">The old minimum and maximum range boundaries.</param>
-        /// <param name="newRange">The new minimum and maximum range boundaries.</param>
-        /// <returns><paramref name="value"/> as its equivalent in the specified <paramref name="newRange"/>.</returns>
-        public static double Normalize(double value, (double Min, double Max) oldRange, (double Min, double Max) newRange)
-            => newRange.Min + (value - oldRange.Min) * (newRange.Max - newRange.Min) / (oldRange.Max - oldRange.Min);
-        /// <summary>
-        /// Normalizes the specified <paramref name="value"/> from the specified <paramref name="oldRange"/> to the specified <paramref name="newRange"/>, and truncates the result to an <see cref="int"/>.
-        /// </summary>
-        /// <inheritdoc cref="Normalize(double, (double Min, double Max), (double Min, double Max))"/>
-        public static int NormalizeInt(double value, (double Min, double Max) oldRange, (double Min, double Max) newRange)
-            => (int)Math.Truncate(Normalize(value, oldRange, newRange));
-        #endregion Normalize
-
         #region (Class) InstanceOrArray<T>
         /// <summary>
-        /// Variant helper class for the <see cref="Expand{T}(InstanceOrArray{T}[])"/> method that accepts <typeparamref name="T"/> instances or arrays.
+        /// Variant helper class that accepts instances or arrays of type <typeparamref name="T"/>.
         /// </summary>
         /// <remarks>
         /// Implicitly convertible from the following types:
@@ -116,10 +99,14 @@ namespace InputSimulator
         }
         /// <inheritdoc cref="BuildKeyState(EVirtualKeyCode, ushort, EKeyState)"/>
         public static INPUT BuildKeyState(EVirtualKeyCode keyCode, EKeyState state)
-            => BuildKeyState(keyCode, NativeMethods.VirtualKeyCodeToScanCode(keyCode), state);
+            => BuildKeyState(keyCode, NativeMethods.ScanCodeFromVirtualKeyCode(keyCode), state);
         #endregion BuildKeyState
 
         #region BuildKeyDown
+        public static INPUT BuildKeyDown(ushort scanCode)
+        {
+            return new INPUT(KEYBDINPUT.GetKeyDown(NativeMethods.VirtualKeyCodeFromScanCode(scanCode), scanCode));
+        }
         public static INPUT BuildKeyDown(EVirtualKeyCode keyCode, ushort scanCode)
         {
             return new INPUT(KEYBDINPUT.GetKeyDown(keyCode, scanCode));
@@ -146,13 +133,17 @@ namespace InputSimulator
         #endregion BuildKeysDown
 
         #region BuildKeyUp
+        public static INPUT BuildKeyUp(ushort scanCode)
+        {
+            return new INPUT(KEYBDINPUT.GetKeyUp(NativeMethods.VirtualKeyCodeFromScanCode(scanCode), scanCode));
+        }
         public static INPUT BuildKeyUp(EVirtualKeyCode keyCode, ushort scanCode)
         {
             return new INPUT(KEYBDINPUT.GetKeyUp(keyCode, scanCode));
         }
         public static INPUT BuildKeyUp(EVirtualKeyCode keyCode)
         {
-            return new INPUT(KEYBDINPUT.GetKeyUp(keyCode));
+            return new INPUT(KEYBDINPUT.GetKeyUp(keyCode, NativeMethods.ScanCodeFromVirtualKeyCode(keyCode)));
         }
         #endregion BuildKeyUp
 
@@ -172,18 +163,32 @@ namespace InputSimulator
         #endregion BuildKeysUp
 
         #region BuildKeyPress
-        public static INPUT[] BuildKeyPress(EVirtualKeyCode keyCode, ushort scanCode)
-            => new[]
+        public static INPUT[] BuildKeyPress(ushort scanCode)
+        {
+            var keyCode = NativeMethods.VirtualKeyCodeFromScanCode(scanCode);
+            return new[]
             {
                 BuildKeyDown(keyCode, scanCode),
                 BuildKeyUp(keyCode, scanCode)
             };
-        public static INPUT[] BuildKeyPress(EVirtualKeyCode keyCode)
-            => new[]
+        }
+        public static INPUT[] BuildKeyPress(EVirtualKeyCode keyCode, ushort scanCode)
+        {
+            return new[]
             {
-                BuildKeyDown(keyCode),
-                BuildKeyUp(keyCode)
+                BuildKeyDown(keyCode, scanCode),
+                BuildKeyUp(keyCode, scanCode)
             };
+        }
+        public static INPUT[] BuildKeyPress(EVirtualKeyCode keyCode)
+        {
+            var scanCode = NativeMethods.ScanCodeFromVirtualKeyCode(keyCode);
+            return new[]
+            {
+                BuildKeyDown(keyCode, scanCode),
+                BuildKeyUp(keyCode, scanCode)
+            };
+        }
         #endregion BuildKeyPress
 
         #region BuildKeyStrokeDown
@@ -239,20 +244,24 @@ namespace InputSimulator
         /// </returns>
         public static INPUT[] BuildKeyStroke(EVirtualKeyCode[] modifierKeys, EVirtualKeyCode[] keys)
         {
-            var inputs = new INPUT[modifierKeys.Length * 2 + keys.Length * 2];
+            var modifierKeysLength = modifierKeys.Length;
+            var keysLength = keys.Length;
+            var inputs = new INPUT[modifierKeysLength * 2 + keysLength * 2];
             int i_inputs = 0;
 
-            int i_modKeyUpInputs = modifierKeys.Length + keys.Length * 2;
+            // modifiers down/up
+            int i_modKeyUpInputs = modifierKeysLength + keysLength * 2;
             foreach (var modifier in modifierKeys)
             {
-                inputs[i_inputs++] = new(KEYBDINPUT.GetKeyDown(modifier));
+                inputs[i_inputs++] = BuildKeyDown(modifier);
                 inputs[i_modKeyUpInputs++] = BuildKeyUp(modifier);
             }
 
-            int i_keyUpInputs = i_inputs + keys.Length;
+            // keys down/up
+            int i_keyUpInputs = i_inputs + keysLength;
             foreach (var key in keys)
             {
-                inputs[i_inputs++] = new(KEYBDINPUT.GetKeyDown(key));
+                inputs[i_inputs++] = BuildKeyDown(key);
                 inputs[i_keyUpInputs++] = BuildKeyUp(key);
             }
 
@@ -260,14 +269,82 @@ namespace InputSimulator
         }
         #endregion BuildKeyStroke
 
-        #region IsExtendedKeyChar
+        #region BuildCharState
+        public static INPUT BuildCharState(char @char, EKeyState state)
+        {
+#pragma warning disable IDE0066 // Convert switch statement to expression
+            switch (state)
+#pragma warning restore IDE0066 // Convert switch statement to expression
+            {
+            case EKeyState.Up:
+                return BuildCharUp(@char);
+            case EKeyState.Down:
+                return BuildCharDown(@char);
+            default:
+                throw new InvalidEnumArgumentException(nameof(state), (int)state, typeof(EKeyState));
+            }
+        }
+        #endregion BuildCharState
+
+        #region BuildCharDown
+        public static INPUT BuildCharDown(char @char)
+        {
+            return CharToKeyINPUT(@char, keyDown: true, keyUp: false).First();
+        }
+        #endregion BuildCharDown
+
+        #region BuildCharUp
+        public static INPUT BuildCharUp(char @char)
+        {
+            return CharToKeyINPUT(@char, keyDown: false, keyUp: true).First();
+        }
+        #endregion BuildCharUp
+
+        #region BuildCharPress
+        public static INPUT[] BuildCharPress(char @char)
+        {
+            return CharToKeyINPUT(@char, keyDown: true, keyUp: true).ToArray();
+        }
+        #endregion BuildCharPress
+
+        #region BuildCharStroke
+        public static INPUT[] BuildCharStroke(EVirtualKeyCode[] modifierKeys, char[] chars)
+        {
+            var modifierKeysLength = modifierKeys.Length;
+            var charsLength = chars.Length;
+            var inputs = new INPUT[modifierKeysLength * 2 + charsLength * 2];
+            int i_inputs = 0;
+
+            // modifiers down/up
+            int i_modKeyUpInputs = modifierKeysLength + charsLength * 2;
+            foreach (var modifier in modifierKeys)
+            {
+                inputs[i_inputs++] = BuildKeyDown(modifier);
+                inputs[i_modKeyUpInputs++] = BuildKeyUp(modifier);
+            }
+
+            // keys down/up
+            int i_keyUpInputs = i_inputs + charsLength;
+            foreach (var @char in chars)
+            {
+                var charDownUpInputs = BuildCharPress(@char).ToArray();
+                inputs[i_inputs++] = charDownUpInputs[0];
+                inputs[i_keyUpInputs++] = charDownUpInputs[1];
+            }
+
+            return inputs.ToArray();
+        }
+        #endregion BuildCharStroke
+
+        #region IsExtendedKey
         /// <summary>
         /// Checks if the specified <paramref name="char"/> is an extended key or not.
         /// </summary>
         /// <param name="char">A <see cref="char"/> value.</param>
         /// <returns><see langword="true"/> when the specified <paramref name="char"/> is an extended key; otherwise, <see langword="false"/>.</returns>
-        public static bool IsExtendedKeyChar(char @char) => (@char & 0xFF00) == 0xE000;
-        #endregion IsExtendedKeyChar
+        public static bool IsExtendedKey(char @char) => (@char & 0xFF00) == 0xE000;
+        public static bool IsExtendedKey(ushort scanCode) => (scanCode & 0xFF00) == 0xE000;
+        #endregion IsExtendedKey
 
         #region CharToKeyINPUT
         /// <summary>
@@ -302,7 +379,7 @@ namespace InputSimulator
                         yield return new(KEYBDINPUT.GetKeyUp(EVirtualKeyCode.VK_BACK));
                     break;
                 default:
-                    bool isExtendedKey = IsExtendedKeyChar(@char);
+                    bool isExtendedKey = IsExtendedKey(@char);
                     if (keyDown)
                         yield return new(KEYBDINPUT.GetKeyDown(@char, isExtendedKey));
                     if (keyUp)
@@ -332,143 +409,6 @@ namespace InputSimulator
         #region Constants
         private const ushort ABSOLUTE_COORDINATE_MAX = ushort.MaxValue - 1;
         #endregion Constants
-
-        #region ToAbsCoordinateX
-        /// <summary>
-        /// Converts the specified <paramref name="xPixels"/> value to absolute coordinates.
-        /// </summary>
-        /// <param name="xPixels">A horizontal position (in pixels) to convert.</param>
-        /// <param name="virtualScreenRect">The virtual screen rect, from <see cref="NativeMethods.GetVirtualScreenRect"/></param>
-        /// <returns>The equivalent absolute horizontal coordinate.</returns>
-        public static int ToAbsCoordinateX(int xPixels, RECT virtualScreenRect)
-        {
-            return NormalizeInt(xPixels, (virtualScreenRect.left, virtualScreenRect.right), (ushort.MinValue, ushort.MaxValue));
-        }
-        /// <inheritdoc cref="ToAbsCoordinateX(int, RECT)"/>
-        /// <remarks>
-        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
-        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
-        /// </remarks>
-        public static int ToAbsCoordinateX(int xPixels) => ToAbsCoordinateX(xPixels, NativeMethods.GetVirtualScreenRect());
-        #endregion ToAbsCoordinateX
-
-        #region ToAbsCoordinateY
-        /// <summary>
-        /// Converts the specified <paramref name="yPixels"/> value to absolute coordinates.
-        /// </summary>
-        /// <param name="yPixels">A vertical position (in pixels) to convert.</param>
-        /// <param name="virtualScreenRect">The virtual screen rect, from <see cref="NativeMethods.GetVirtualScreenRect"/></param>
-        /// <returns>The equivalent absolute vertical coordinate.</returns>
-        public static int ToAbsCoordinateY(int yPixels, RECT virtualScreenRect)
-        {
-            return NormalizeInt(yPixels, (virtualScreenRect.top, virtualScreenRect.bottom), (ushort.MinValue, ushort.MaxValue));
-        }
-        /// <inheritdoc cref="ToAbsCoordinateY(int, RECT)"/>
-        /// <remarks>
-        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
-        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
-        /// </remarks>
-        public static int ToAbsCoordinateY(int yPixels) => ToAbsCoordinateY(yPixels, NativeMethods.GetVirtualScreenRect());
-        #endregion ToAbsCoordinateY
-
-        #region ToAbsCoordinates
-        /// <summary>
-        /// Converts the specified <paramref name="xPixels"/> &amp; <paramref name="yPixels"/> values to absolute coordinates.
-        /// </summary>
-        /// <param name="xPixels">A horizontal position (in pixels) to convert.</param>
-        /// <param name="yPixels">A vertical position (in pixels) to convert.</param>
-        /// <param name="virtualScreenRect">The virtual screen rect, from <see cref="NativeMethods.GetVirtualScreenRect"/></param>
-        /// <returns><see cref="POINT"/> containing the equivalent absolute coordinates.</returns>
-        public static POINT ToAbsCoordinates(int xPixels, int yPixels, RECT virtualScreenRect)
-        {
-            return new(
-                xPos: ToAbsCoordinateX(xPixels, virtualScreenRect),
-                yPos: ToAbsCoordinateY(yPixels, virtualScreenRect));
-        }
-        /// <inheritdoc cref="ToAbsCoordinates(ushort, ushort, RECT)"/>
-        /// <remarks>
-        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
-        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
-        /// </remarks>
-        public static POINT ToAbsCoordinates(int xPixels, int yPixels) => ToAbsCoordinates(xPixels, yPixels, NativeMethods.GetVirtualScreenRect());
-
-        // with POINT:
-
-        /// <summary>
-        /// Converts the specified <paramref name="pxPoint"/> to absolute coordinates.
-        /// </summary>
-        /// <param name="pxPoint">A point (in pixels) to convert.</param>
-        /// <param name="virtualScreenRect">The virtual screen rect, from <see cref="NativeMethods.GetVirtualScreenRect"/></param>
-        /// <returns><see cref="POINT"/> containing the equivalent absolute coordinates.</returns>
-        public static POINT ToAbsCoordinates(POINT pxPoint, RECT virtualScreenRect)
-        {
-            return new(
-                xPos: ToAbsCoordinateX(pxPoint.x, virtualScreenRect),
-                yPos: ToAbsCoordinateY(pxPoint.y, virtualScreenRect));
-        }
-        /// <inheritdoc cref="ToAbsCoordinates(POINT, RECT)"/>
-        /// <remarks>
-        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
-        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
-        /// </remarks>
-        public static POINT ToAbsCoordinates(POINT pxPoint) => ToAbsCoordinates(pxPoint, NativeMethods.GetVirtualScreenRect());
-        #endregion ToAbsCoordinates
-
-        #region FromAbsCoordinateX
-        public static int FromAbsCoordinateX(int xAbs, RECT virtualScreenRect)
-        {
-            return NormalizeInt(xAbs, (ushort.MinValue, ushort.MaxValue), (virtualScreenRect.left, virtualScreenRect.right));
-        }
-        /// <inheritdoc cref="FromAbsCoordinateX(int, RECT)"/>
-        /// <remarks>
-        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
-        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
-        /// </remarks>
-        public static int FromAbsCoordinateX(int xAbs) => FromAbsCoordinateX(xAbs, NativeMethods.GetVirtualScreenRect());
-        #endregion FromAbsCoordinateX
-
-        #region FromAbsCoordinateY
-        public static int FromAbsCoordinateY(int yAbs, RECT virtualScreenRect)
-        {
-            return NormalizeInt(yAbs, (ushort.MinValue, ushort.MaxValue), (virtualScreenRect.top, virtualScreenRect.bottom));
-        }
-        /// <inheritdoc cref="FromAbsCoordinateY(int, RECT)"/>
-        /// <remarks>
-        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
-        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
-        /// </remarks>
-        public static int FromAbsCoordinateY(int yAbs) => FromAbsCoordinateY(yAbs, NativeMethods.GetVirtualScreenRect());
-        #endregion FromAbsCoordinateY
-
-        #region FromAbsCoordinates
-        public static POINT FromAbsCoordinates(ushort xAbs, ushort yAbs, RECT virtualScreenRect)
-        {
-            return new(
-                xPos: FromAbsCoordinateX(xAbs, virtualScreenRect),
-                yPos: FromAbsCoordinateY(yAbs, virtualScreenRect));
-        }
-        /// <inheritdoc cref="FromAbsCoordinates(ushort, ushort, RECT)"/>
-        /// <remarks>
-        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
-        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
-        /// </remarks>
-        public static POINT FromAbsCoordinates(ushort xAbs, ushort yAbs) => FromAbsCoordinates(xAbs, yAbs, NativeMethods.GetVirtualScreenRect());
-
-        // with POINT:
-
-        public static POINT FromAbsCoordinates(POINT absPoint, RECT virtualScreenRect)
-        {
-            return new(
-                xPos: FromAbsCoordinateX(absPoint.x, virtualScreenRect),
-                yPos: FromAbsCoordinateY(absPoint.y, virtualScreenRect));
-        }
-        /// <inheritdoc cref="FromAbsCoordinates(POINT, RECT)"/>
-        /// <remarks>
-        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
-        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
-        /// </remarks>
-        public static POINT FromAbsCoordinates(POINT absPoint) => FromAbsCoordinates(absPoint, NativeMethods.GetVirtualScreenRect());
-        #endregion FromAbsCoordinates
 
         #region MouseButtonToFlags
         /// <summary>
@@ -582,8 +522,8 @@ namespace InputSimulator
             return new INPUT(new MOUSEINPUT()
             {
                 dwFlags = MOUSEINPUT.Flags.MOUSEEVENTF_MOVE | MOUSEINPUT.Flags.MOUSEEVENTF_ABSOLUTE | MOUSEINPUT.Flags.MOUSEEVENTF_VIRTUALDESK,
-                dx = ToAbsCoordinateX(xPosition, virtualScreenRect),
-                dy = ToAbsCoordinateY(yPosition, virtualScreenRect),
+                dx = ScreenCoordinateHelper.ToAbsCoordinateX(xPosition, virtualScreenRect),
+                dy = ScreenCoordinateHelper.ToAbsCoordinateY(yPosition, virtualScreenRect),
             });
         }
         public static INPUT BuildMouseMoveTo(int x, int y, uint dpi, bool primaryMonitorOnly = false)

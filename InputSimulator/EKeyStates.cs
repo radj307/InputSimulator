@@ -5,6 +5,9 @@ namespace InputSimulator
     /// <summary>
     /// Defines the possible states of a physical key on the keyboard.
     /// </summary>
+    /// <remarks>
+    /// This is used as a return value by methods the <see cref="Native.NativeMethods"/> class.
+    /// </remarks>
     [Flags]
     public enum EKeyStates : byte
     {

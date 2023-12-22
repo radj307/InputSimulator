@@ -598,7 +598,7 @@
                             Content="."
                             Tag="{x:Static is:EVirtualKeyCode.NumpadDecimal}" />
 
-                        <!--  Number keys  -->
+                        <!--  Numpad: Number keys  -->
                         <Button
                             Grid.Row="1"
                             Content="7"
@@ -646,6 +646,45 @@
                             Grid.ColumnSpan="2"
                             Content="0"
                             Tag="{x:Static is:EVirtualKeyCode.Numpad0}" />
+                    </Grid>
+
+                    <!--  Media Keys  -->
+                    <Grid Grid.Column="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition />
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+
+                        <Button Grid.RowSpan="2" Tag="{x:Static is:EVirtualKeyCode.MediaPrevTrack}">
+                            <Path Data="M 4.5,0 l -4,4 l 4,4  M 9.5,0 l -4,4 l 4,4" StrokeThickness="1" />
+                        </Button>
+                        <Button
+                            Grid.RowSpan="2"
+                            Grid.Column="1"
+                            Tag="{x:Static is:EVirtualKeyCode.MediaPlayPause}">
+                            <Path Data="M 0.4,0 V 8  M 5,0 V 8" StrokeThickness="1" />
+                        </Button>
+                        <Button
+                            Grid.RowSpan="2"
+                            Grid.Column="2"
+                            Tag="{x:Static is:EVirtualKeyCode.MediaNextTrack}">
+                            <Path Data="M 0,0 l 4,4 l -4,4  M 5.5,0 l 4,4 l -4,4" StrokeThickness="1" />
+                        </Button>
+                        <Button Grid.Column="3" Tag="{x:Static is:EVirtualKeyCode.VolumeUp}">
+                            <Path Data="M 0,3 l 3,-3 l 3,3" />
+                        </Button>
+                        <Button
+                            Grid.Row="1"
+                            Grid.Column="3"
+                            Tag="{x:Static is:EVirtualKeyCode.VolumeDown}">
+                            <Path Data="M 0,0 l 3,3 l 3,-3" />
+                        </Button>
                     </Grid>
                 </Grid>
             </Grid>

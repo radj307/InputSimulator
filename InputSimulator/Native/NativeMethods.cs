@@ -479,12 +479,12 @@ namespace InputSimulator.Native
             return lpPoint;
         }
         public static POINT GetCursorPosAbs()
-            => InputHelper.ToAbsCoordinates(GetCursorPos());
+            => ScreenCoordinateHelper.ToAbsCoordinates(GetCursorPos());
         #endregion GetCursorPos
 
         #region GetKeyState (P/Invoke)
         [DllImport("User32.dll", EntryPoint = "GetKeyState")]
-        private static extern ushort GetKeyState_Native(EVirtualKeyCode nVirtKey);
+        private static extern ushort GetKeyState_Native(ushort nVirtKey);
         #endregion GetKeyState (P/Invoke)
 
         #region GetKeyState
@@ -495,7 +495,7 @@ namespace InputSimulator.Native
         /// <returns>The specified key's state as an <see cref="EKeyStates"/>.</returns>
         public static EKeyStates GetKeyState(EVirtualKeyCode virtualKeyCode)
         {
-            var state = GetKeyState_Native(virtualKeyCode);
+            var state = GetKeyState_Native((ushort)virtualKeyCode);
 
             bool isDown = (state & 0x8000) != 0; //< check the most significant bit
             bool isToggled = (state & 0x0001) != 0; //< check the least significant bit
@@ -518,24 +518,182 @@ namespace InputSimulator.Native
         private const uint MAPVK_VSC_TO_VK = 1;
         #endregion MapVirtualKey (P/Invoke)
 
-        #region VirtualKeyCodeToScanCode
+        #region ScanCodeFromVirtualKeyCode
         /// <summary>
         /// Converts the specified <paramref name="virtualKeyCode"/> to the equivalent scan code.
         /// </summary>
         /// <param name="virtualKeyCode">A virtual key code to convert.</param>
         /// <returns>The scan code of the key represented by the <paramref name="virtualKeyCode"/>.</returns>
-        public static ushort VirtualKeyCodeToScanCode(EVirtualKeyCode virtualKeyCode)
-            => unchecked((ushort)MapVirtualKey((uint)virtualKeyCode, MAPVK_VK_TO_VSC));
-        #endregion VirtualKeyCodeToScanCode
+        public static ushort ScanCodeFromVirtualKeyCode(EVirtualKeyCode virtualKeyCode)
+            => unchecked((ushort)MapVirtualKey((ushort)virtualKeyCode, MAPVK_VK_TO_VSC));
+        #endregion ScanCodeFromVirtualKeyCode
 
-        #region ScanCodeToVirtualKeyCode
+        #region VirtualKeyCodeFromScanCode
         /// <summary>
         /// Converts the specified <paramref name="scanCode"/> to the equivalent <see cref="EVirtualKeyCode"/>.
         /// </summary>
         /// <param name="scanCode">A scan code to convert.</param>
         /// <returns>The <see cref="EVirtualKeyCode"/> of the key with the specified <paramref name="scanCode"/>.</returns>
-        public static EVirtualKeyCode ScanCodeToVirtualKeyCode(ushort scanCode)
+        public static EVirtualKeyCode VirtualKeyCodeFromScanCode(ushort scanCode)
             => unchecked((EVirtualKeyCode)MapVirtualKey(scanCode, MAPVK_VSC_TO_VK));
-        #endregion ScanCodeToVirtualKeyCode
+        #endregion VirtualKeyCodeFromScanCode
+    }
+    public static class ScreenCoordinateHelper
+    {
+        #region Normalize
+        /// <summary>
+        /// Normalizes the specified <paramref name="value"/> from the specified <paramref name="oldRange"/> to the specified <paramref name="newRange"/>.
+        /// </summary>
+        /// <param name="value">A value within the specified <paramref name="oldRange"/> to normalize to the <paramref name="newRange"/>.</param>
+        /// <param name="oldRange">The old minimum and maximum range boundaries.</param>
+        /// <param name="newRange">The new minimum and maximum range boundaries.</param>
+        /// <returns><paramref name="value"/> as its equivalent in the specified <paramref name="newRange"/>.</returns>
+        public static double Normalize(double value, (double Min, double Max) oldRange, (double Min, double Max) newRange)
+            => newRange.Min + (value - oldRange.Min) * (newRange.Max - newRange.Min) / (oldRange.Max - oldRange.Min);
+        /// <summary>
+        /// Normalizes the specified <paramref name="value"/> from the specified <paramref name="oldRange"/> to the specified <paramref name="newRange"/>, and truncates the result to an <see cref="int"/>.
+        /// </summary>
+        /// <inheritdoc cref="Normalize(double, (double Min, double Max), (double Min, double Max))"/>
+        public static int NormalizeInt(double value, (double Min, double Max) oldRange, (double Min, double Max) newRange)
+            => (int)Math.Truncate(Normalize(value, oldRange, newRange));
+        #endregion Normalize
+
+        #region ToAbsCoordinateX
+        /// <summary>
+        /// Converts the specified <paramref name="xPixels"/> value to absolute coordinates.
+        /// </summary>
+        /// <param name="xPixels">A horizontal position (in pixels) to convert.</param>
+        /// <param name="virtualScreenRect">The virtual screen rect, from <see cref="NativeMethods.GetVirtualScreenRect"/></param>
+        /// <returns>The equivalent absolute horizontal coordinate.</returns>
+        public static int ToAbsCoordinateX(int xPixels, RECT virtualScreenRect)
+        {
+            return NormalizeInt(xPixels, (virtualScreenRect.left, virtualScreenRect.right), (ushort.MinValue, ushort.MaxValue));
+        }
+        /// <inheritdoc cref="ToAbsCoordinateX(int, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
+        public static int ToAbsCoordinateX(int xPixels) => ToAbsCoordinateX(xPixels, NativeMethods.GetVirtualScreenRect());
+        #endregion ToAbsCoordinateX
+
+        #region ToAbsCoordinateY
+        /// <summary>
+        /// Converts the specified <paramref name="yPixels"/> value to absolute coordinates.
+        /// </summary>
+        /// <param name="yPixels">A vertical position (in pixels) to convert.</param>
+        /// <param name="virtualScreenRect">The virtual screen rect, from <see cref="NativeMethods.GetVirtualScreenRect"/></param>
+        /// <returns>The equivalent absolute vertical coordinate.</returns>
+        public static int ToAbsCoordinateY(int yPixels, RECT virtualScreenRect)
+        {
+            return NormalizeInt(yPixels, (virtualScreenRect.top, virtualScreenRect.bottom), (ushort.MinValue, ushort.MaxValue));
+        }
+        /// <inheritdoc cref="ToAbsCoordinateY(int, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
+        public static int ToAbsCoordinateY(int yPixels) => ToAbsCoordinateY(yPixels, NativeMethods.GetVirtualScreenRect());
+        #endregion ToAbsCoordinateY
+
+        #region ToAbsCoordinates
+        /// <summary>
+        /// Converts the specified <paramref name="xPixels"/> &amp; <paramref name="yPixels"/> values to absolute coordinates.
+        /// </summary>
+        /// <param name="xPixels">A horizontal position (in pixels) to convert.</param>
+        /// <param name="yPixels">A vertical position (in pixels) to convert.</param>
+        /// <param name="virtualScreenRect">The virtual screen rect, from <see cref="NativeMethods.GetVirtualScreenRect"/></param>
+        /// <returns><see cref="POINT"/> containing the equivalent absolute coordinates.</returns>
+        public static POINT ToAbsCoordinates(int xPixels, int yPixels, RECT virtualScreenRect)
+        {
+            return new(
+                xPos: ToAbsCoordinateX(xPixels, virtualScreenRect),
+                yPos: ToAbsCoordinateY(yPixels, virtualScreenRect));
+        }
+        /// <inheritdoc cref="ToAbsCoordinates(ushort, ushort, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
+        public static POINT ToAbsCoordinates(int xPixels, int yPixels) => ToAbsCoordinates(xPixels, yPixels, NativeMethods.GetVirtualScreenRect());
+
+        // with POINT:
+
+        /// <summary>
+        /// Converts the specified <paramref name="pxPoint"/> to absolute coordinates.
+        /// </summary>
+        /// <param name="pxPoint">A point (in pixels) to convert.</param>
+        /// <param name="virtualScreenRect">The virtual screen rect, from <see cref="NativeMethods.GetVirtualScreenRect"/></param>
+        /// <returns><see cref="POINT"/> containing the equivalent absolute coordinates.</returns>
+        public static POINT ToAbsCoordinates(POINT pxPoint, RECT virtualScreenRect)
+        {
+            return new(
+                xPos: ToAbsCoordinateX(pxPoint.x, virtualScreenRect),
+                yPos: ToAbsCoordinateY(pxPoint.y, virtualScreenRect));
+        }
+        /// <inheritdoc cref="ToAbsCoordinates(POINT, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
+        public static POINT ToAbsCoordinates(POINT pxPoint) => ToAbsCoordinates(pxPoint, NativeMethods.GetVirtualScreenRect());
+        #endregion ToAbsCoordinates
+
+        #region FromAbsCoordinateX
+        public static int FromAbsCoordinateX(int xAbs, RECT virtualScreenRect)
+        {
+            return NormalizeInt(xAbs, (ushort.MinValue, ushort.MaxValue), (virtualScreenRect.left, virtualScreenRect.right));
+        }
+        /// <inheritdoc cref="FromAbsCoordinateX(int, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
+        public static int FromAbsCoordinateX(int xAbs) => FromAbsCoordinateX(xAbs, NativeMethods.GetVirtualScreenRect());
+        #endregion FromAbsCoordinateX
+
+        #region FromAbsCoordinateY
+        public static int FromAbsCoordinateY(int yAbs, RECT virtualScreenRect)
+        {
+            return NormalizeInt(yAbs, (ushort.MinValue, ushort.MaxValue), (virtualScreenRect.top, virtualScreenRect.bottom));
+        }
+        /// <inheritdoc cref="FromAbsCoordinateY(int, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
+        public static int FromAbsCoordinateY(int yAbs) => FromAbsCoordinateY(yAbs, NativeMethods.GetVirtualScreenRect());
+        #endregion FromAbsCoordinateY
+
+        #region FromAbsCoordinates
+        public static POINT FromAbsCoordinates(ushort xAbs, ushort yAbs, RECT virtualScreenRect)
+        {
+            return new(
+                xPos: FromAbsCoordinateX(xAbs, virtualScreenRect),
+                yPos: FromAbsCoordinateY(yAbs, virtualScreenRect));
+        }
+        /// <inheritdoc cref="FromAbsCoordinates(ushort, ushort, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
+        public static POINT FromAbsCoordinates(ushort xAbs, ushort yAbs) => FromAbsCoordinates(xAbs, yAbs, NativeMethods.GetVirtualScreenRect());
+
+        // with POINT:
+
+        public static POINT FromAbsCoordinates(POINT absPoint, RECT virtualScreenRect)
+        {
+            return new(
+                xPos: FromAbsCoordinateX(absPoint.x, virtualScreenRect),
+                yPos: FromAbsCoordinateY(absPoint.y, virtualScreenRect));
+        }
+        /// <inheritdoc cref="FromAbsCoordinates(POINT, RECT)"/>
+        /// <remarks>
+        /// When performing multiple conversions, use the overload that accepts the virtual screen <see cref="RECT"/> for better performance.<br/>
+        /// The virtual screen rect can be acquired with <see cref="NativeMethods.GetVirtualScreenRect()"/>.
+        /// </remarks>
+        public static POINT FromAbsCoordinates(POINT absPoint) => FromAbsCoordinates(absPoint, NativeMethods.GetVirtualScreenRect());
+        #endregion FromAbsCoordinates
+
     }
 }
